@@ -7,6 +7,6 @@
 
 static LGFX lcd;
 
-void displayTask(void *parameter);
+// void displayTask(void *parameter); 
 
 #endif
