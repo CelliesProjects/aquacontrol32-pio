@@ -10,7 +10,7 @@ void setup(void)
     while (!Serial)
         delay(10);
 
-    delay(2000);
+    delay(1000);
 
     BaseType_t result = xTaskCreate(displayTask,
                                     NULL,

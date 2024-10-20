@@ -6,10 +6,15 @@ void dimmerTask(void *parameter)
 
     // setup ledc
     const int freq = 2400;
-    const uint8_t ledPin[] = {36, 39, 40, 41, 42};
+    const uint8_t ledPin[] = {38, 39, 40, 41, 42};
 
     for (auto pin = 0; pin < sizeof(ledPin); pin++)
-        ledcAttachChannel(ledPin[pin], freq, SOC_LEDC_TIMER_BIT_WIDTH, pin + 1);
+        if (!ledcAttachChannel(ledPin[pin], freq, SOC_LEDC_TIMER_BIT_WIDTH, pin + 1))
+        {
+            log_e("Error setting ledc channel %i", pin);
+            while (1)
+                delay(1000);
+        }
 
     log_i("done");
 
