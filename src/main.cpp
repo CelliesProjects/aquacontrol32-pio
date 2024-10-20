@@ -1,18 +1,34 @@
 #include <Arduino.h>
 
 extern void displayTask(void *parameter);
+extern void dimmerTask(void *parameter);
 
 void setup(void)
 {
     Serial.begin(115200);
-    auto result = xTaskCreate(displayTask,
-                              NULL,
-                              4096,
-                              NULL,
-                              tskIDLE_PRIORITY,
-                              NULL);
+
+    while (!Serial)
+        delay(10);
+
+    delay(2000);
+
+    BaseType_t result = xTaskCreate(displayTask,
+                                    NULL,
+                                    4096,
+                                    NULL,
+                                    tskIDLE_PRIORITY,
+                                    NULL);
     if (result != pdPASS)
-        log_e("could not start displaytask");
+        log_e("could not start displayTask");
+
+    result = xTaskCreate(dimmerTask,
+                         NULL,
+                         4096,
+                         NULL,
+                         tskIDLE_PRIORITY,
+                         NULL);
+    if (result != pdPASS)
+        log_e("could not start dimmerTask");
 }
 
 void loop()
