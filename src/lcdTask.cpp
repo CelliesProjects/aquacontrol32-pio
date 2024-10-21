@@ -42,9 +42,8 @@ static void showSystemMessage(char *str)
 void lcdTask(void *parameter)
 {
     lcd.setColorDepth(lgfx::rgb565_2Byte);
+    lcd.setBrightness(140);
     lcd.init();
-    // lcd.setTextDatum(CC_DATUM);
-    // lcd.drawString("Hello world!", lcd.width() >> 1, lcd.height() >> 1, &Font4);
 
     while (1)
     {

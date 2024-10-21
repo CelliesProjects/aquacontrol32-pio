@@ -5,6 +5,4 @@
 #include <esp32-hal.h>
 #include <hal/ledc_types.h>
 
-//void dimmerTask(void *parameter);
-
 #endif
