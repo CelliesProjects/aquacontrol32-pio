@@ -5,8 +5,10 @@
 #include <LovyanGFX.hpp>
 #include <LGFX_AUTODETECT.hpp>
 
-static LGFX lcd;
+#include "lcdMessage_t.h"
 
-// void displayTask(void *parameter); 
+QueueHandle_t lcdQueue = xQueueCreate(6, sizeof(lcdMessage_t));
+
+static LGFX lcd;
 
 #endif
