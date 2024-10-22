@@ -56,8 +56,8 @@ void dimmerTask(void *parameter)
 
         const suseconds_t msElapsedToday = msSinceMidnight();
 
-        if (msElapsedToday)
-        { /* to solve flashing at 00:00:000 due to the fact that the first timer has no predecessor */
+        if (msElapsedToday) /* to solve flashing at 00:00:000 due to the fact that the first timer has no predecessor at this time*/
+        {
             for (uint8_t num = 0; num < NUMBER_OF_CHANNELS; num++)
             {
                 uint8_t thisTimer = 0;

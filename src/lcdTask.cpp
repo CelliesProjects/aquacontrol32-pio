@@ -42,7 +42,7 @@ static void showSystemMessage(char *str)
 static void updateLights()
 {
     char buffer[64];
-    snprintf(buffer, sizeof(buffer), "%.2f%% %.2f%% %.2f%% %.2f%% %.2f%% ",
+    snprintf(buffer, sizeof(buffer), "% 3.2f%% % 3.2f%% % 3.2f%% % 3.2f%% % 3.2f%% ",
              currentPercentage[0],
              currentPercentage[1],
              currentPercentage[2],
