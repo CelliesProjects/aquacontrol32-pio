@@ -7,6 +7,8 @@
 
 #include "lcdMessage_t.h"
 
+extern float currentPercentage[NUMBER_OF_CHANNELS];
+
 QueueHandle_t lcdQueue = xQueueCreate(6, sizeof(lcdMessage_t));
 
 static LGFX lcd;

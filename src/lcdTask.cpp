@@ -39,6 +39,20 @@ static void showSystemMessage(char *str)
     sysMess.pushSprite(0, 0);
 }
 
+static void updateLights()
+{
+    char buffer[64];
+    snprintf(buffer, sizeof(buffer), "%.2f%% %.2f%% %.2f%% %.2f%% %.2f%% ",
+             currentPercentage[0],
+             currentPercentage[1],
+             currentPercentage[2],
+             currentPercentage[3],
+             currentPercentage[4]);
+
+    lcd.setTextColor(lcd.color565(120, 120, 120), 0);
+    lcd.drawCenterString(buffer, lcd.width() >> 1, lcd.height() >> 1, &Font2);
+}
+
 void lcdTask(void *parameter)
 {
     lcd.setColorDepth(lgfx::rgb565_2Byte);
@@ -54,6 +68,10 @@ void lcdTask(void *parameter)
             {
             case lcdMessageType::LCD_SYSTEM_MESSAGE:
                 showSystemMessage(msg.str);
+                break;
+
+            case lcdMessageType::UPDATE_LIGHTS:
+                updateLights();
                 break;
 
             default:

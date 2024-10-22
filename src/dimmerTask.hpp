@@ -7,9 +7,12 @@
 #include <vector>
 
 #include "lightTime_t.h"
+#include "lcdMessage_t.h"
 
-//https://www.geeksforgeeks.org/array-of-vectors-in-c-stl/
+extern QueueHandle_t lcdQueue;
 
-std::vector<lightTimer_t> channel[5];
+std::vector<lightTimer_t> channel[NUMBER_OF_CHANNELS];
+
+float currentPercentage[NUMBER_OF_CHANNELS];
 
 #endif

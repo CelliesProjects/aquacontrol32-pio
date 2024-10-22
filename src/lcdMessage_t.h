@@ -3,7 +3,8 @@
 
 enum lcdMessageType
 {
-    LCD_SYSTEM_MESSAGE
+    LCD_SYSTEM_MESSAGE,
+    UPDATE_LIGHTS
 };
 
 struct lcdMessage_t

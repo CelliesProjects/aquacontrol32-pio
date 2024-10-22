@@ -13,7 +13,7 @@ extern void lcdTask(void *parameter);
 extern void messageOnLcd(const char *str);
 
 extern void dimmerTask(void *parameter);
-extern std::vector<lightTimer_t> channel[5];
+extern std::vector<lightTimer_t> channel[NUMBER_OF_CHANNELS];
 
 static void startDimmerTask()
 {
@@ -52,15 +52,20 @@ static void parseTimerFile(File &file)
     int currentLine = 1;
     while (file.available())
     {
-        // first of every section line should be a [0-9]
+        // first of every section line should be in pattern [0-9]
         if (line[0] != '[' || !isdigit(line[1]) || line[2] != ']')
         {
             log_e("invalid section header at line %i", currentLine);
-            return;
+            break;
         }
         const int currentChannel = atoi(&line[1]);
-
         log_v("current channel: %i", currentChannel);
+
+        if (currentChannel >= NUMBER_OF_CHANNELS)
+        {
+            log_e("invalid channel number at line %i", currentLine);
+            break;
+        }
 
         // now parse lines until the line starts with something else than 0-9
         line = file.readStringUntil('\n');
@@ -69,14 +74,14 @@ static void parseTimerFile(File &file)
         while (isdigit(line[0]))
         {
             // check if the comma is in a plausible place etc...
-            if (line.indexOf(",") < 1)\
+            if (line.indexOf(",") < 1)
             {
                 log_e("invalid syntax in line %i parsing channel %i", currentLine, currentChannel);
                 break;
             }
             const int time = line.toInt();                                        // should be in range 0-86400
             const int percentage = line.substring(line.indexOf(",") + 1).toInt(); // should be in range 0-100
-            log_v("time: %i, percent: %i", time, percentage);
+            log_i("%i time: %i, percent: %i",currentChannel, time, percentage);
 
             channel[currentChannel].push_back({time, percentage});
 
@@ -84,6 +89,12 @@ static void parseTimerFile(File &file)
             currentLine++;
         }
     }
+
+    // copy the 00:00 timers to 24:00
+    for (int ch = 0; ch < NUMBER_OF_CHANNELS; ch++)
+        if (channel[ch].size())
+            channel[ch].push_back({86400, channel[ch][0].percentage});
+
     log_i("read %i lines", currentLine);
     log_i("ch 0: %i timers", channel[0].size());
     log_i("ch 1: %i timers", channel[1].size());

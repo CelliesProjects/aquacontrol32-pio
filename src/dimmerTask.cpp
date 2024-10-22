@@ -21,6 +21,11 @@ static unsigned long long msSinceMidnight()
     return millisecondsSinceMidnight;
 }
 
+static inline float mapFloat(const float &x, const float &in_min, const float &in_max, const float &out_min, const float &out_max)
+{
+    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
 void dimmerTask(void *parameter)
 {
     // https://docs.espressif.com/projects/arduino-esp32/en/latest/api/ledc.html
@@ -37,13 +42,69 @@ void dimmerTask(void *parameter)
                 delay(1000);
         }
 
-    constexpr const auto TICK_RATE_HZ = 1;
+    const int LEDC_MAX_VALUE = (1 << SOC_LEDC_TIMER_BIT_WIDTH) - 1;
+
+    log_i("max pwm val: %i", LEDC_MAX_VALUE);
+
+    constexpr const auto TICK_RATE_HZ = 25;
     constexpr const TickType_t ticksToWait = pdTICKS_TO_MS(1000 / TICK_RATE_HZ);
     static TickType_t xLastWakeTime = xTaskGetTickCount();
 
     while (1)
     {
         vTaskDelayUntil(&xLastWakeTime, ticksToWait);
-        log_v("%llu milliseconds since midnight", msSinceMidnight());
+
+        const suseconds_t msElapsedToday = msSinceMidnight();
+
+        if (msElapsedToday)
+        { /* to solve flashing at 00:00:000 due to the fact that the first timer has no predecessor */
+            for (uint8_t num = 0; num < NUMBER_OF_CHANNELS; num++)
+            {
+                uint8_t thisTimer = 0;
+                while (channel[num][thisTimer].time * 1000U < msElapsedToday)
+                    thisTimer++;
+
+                float newPercentage;
+                /* only do a lot of float math if really neccesary */
+                if (channel[num][thisTimer].percentage != channel[num][thisTimer - 1].percentage)
+                {
+                    newPercentage = mapFloat(msElapsedToday,
+                                             channel[num][thisTimer - 1].time * 1000U,
+                                             channel[num][thisTimer].time * 1000U,
+                                             channel[num][thisTimer - 1].percentage,
+                                             channel[num][thisTimer].percentage);
+                }
+                else
+                {
+                    /* timers are equal so no math neccesary */
+                    newPercentage = channel[num][thisTimer].percentage;
+                }
+
+                /* calculate moon light */
+                // if (newPercentage < (channel[num].fullMoonLevel * moonData.percentLit))
+                //     newPercentage = channel[num].fullMoonLevel * moonData.percentLit;
+
+                /* done, set the channel */
+                currentPercentage[num] = newPercentage;
+
+                ledcWrite(num, mapFloat(currentPercentage[num],
+                                        0,
+                                        100,
+                                        0,
+                                        LEDC_MAX_VALUE));
+
+                constexpr const int REFRESHRATE_LCD_HZ = 5;
+                constexpr const TickType_t LCD_WAIT_TIME = 1000 / REFRESHRATE_LCD_HZ;
+                static TickType_t xlastLcdRefresh = 0;
+
+                if (millis() - xlastLcdRefresh > LCD_WAIT_TIME)
+                {
+                    lcdMessage_t msg;
+                    msg.type = lcdMessageType::UPDATE_LIGHTS;
+                    xQueueSend(lcdQueue, &msg, portMAX_DELAY);
+                    xlastLcdRefresh = millis();
+                }
+            }
+        }
     }
 }
