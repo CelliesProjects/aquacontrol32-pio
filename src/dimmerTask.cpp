@@ -32,7 +32,7 @@ void dimmerTask(void *parameter)
     for (auto pin = 0; pin < sizeof(ledPin); pin++)
         if (!ledcAttachChannel(ledPin[pin], freq, SOC_LEDC_TIMER_BIT_WIDTH, pin + 1)) // plus 1 because the tft backlight is channel 0
         {
-            log_e("Error setting ledc channel %i. system halted", pin);
+            log_e("Error setting ledc channel %i. system halted", pin + 1);
             while (1)
                 delay(1000);
         }
@@ -44,6 +44,6 @@ void dimmerTask(void *parameter)
     while (1)
     {
         vTaskDelayUntil(&xLastWakeTime, ticksToWait);
-        log_i("%llu milliseconds since midnight", msSinceMidnight());
+        log_v("%llu milliseconds since midnight", msSinceMidnight());
     }
 }
