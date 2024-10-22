@@ -69,8 +69,13 @@ static void parseTimerFile(File &file)
         while (isdigit(line[0]))
         {
             // check if the comma is in a plausible place etc...
-            int time = line.toInt();
-            int percentage = line.substring(line.indexOf(",") + 1).toInt();
+            if (line.indexOf(",") < 1)\
+            {
+                log_e("invalid syntax in line %i parsing channel %i", currentLine, currentChannel);
+                break;
+            }
+            const int time = line.toInt();                                        // should be in range 0-86400
+            const int percentage = line.substring(line.indexOf(",") + 1).toInt(); // should be in range 0-100
             log_v("time: %i, percent: %i", time, percentage);
 
             channel[currentChannel].push_back({time, percentage});
@@ -119,7 +124,10 @@ void setup(void)
         {
             File file = SD.open(DEFAULT_TIMERFILE);
             if (file)
+            {
                 parseTimerFile(file);
+                file.close();
+            }
         }
     }
 
