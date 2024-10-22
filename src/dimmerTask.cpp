@@ -30,23 +30,22 @@ void dimmerTask(void *parameter)
 {
     // https://docs.espressif.com/projects/arduino-esp32/en/latest/api/ledc.html
 
-    // setup ledc
     const int freq = 1200;
     const uint8_t ledPin[] = {38, 39, 40, 41, 42};
 
-    for (auto pin = 0; pin < sizeof(ledPin); pin++)
-        if (!ledcAttachChannel(ledPin[pin], freq, SOC_LEDC_TIMER_BIT_WIDTH, pin + 1)) // plus 1 because the tft backlight is channel 0
+    for (auto current = 0; current < sizeof(ledPin); current++)
+        if (!ledcAttach(ledPin[current], freq, SOC_LEDC_TIMER_BIT_WIDTH))
         {
-            log_e("Error setting ledc channel %i. system halted", pin + 1);
+            log_e("Error setting ledc pin %i. system halted", current);
             while (1)
                 delay(1000);
         }
 
-    const int LEDC_MAX_VALUE = (1 << SOC_LEDC_TIMER_BIT_WIDTH) - 1;
+    const float fullMoonLevel[NUMBER_OF_CHANNELS] = {0, 0, 0, 0, 0.06};
+    moonPhase moonPhase;
+    moonData_t moon = moonPhase.getPhase();
 
-    log_i("max pwm val: %i", LEDC_MAX_VALUE);
-
-    constexpr const auto TICK_RATE_HZ = 25;
+    constexpr const auto TICK_RATE_HZ = 100;
     constexpr const TickType_t ticksToWait = pdTICKS_TO_MS(1000 / TICK_RATE_HZ);
     static TickType_t xLastWakeTime = xTaskGetTickCount();
 
@@ -65,7 +64,6 @@ void dimmerTask(void *parameter)
                     thisTimer++;
 
                 float newPercentage;
-                /* only do a lot of float math if really neccesary */
                 if (channel[num][thisTimer].percentage != channel[num][thisTimer - 1].percentage)
                 {
                     newPercentage = mapFloat(msElapsedToday,
@@ -75,29 +73,29 @@ void dimmerTask(void *parameter)
                                              channel[num][thisTimer].percentage);
                 }
                 else
-                {
-                    /* timers are equal so no math neccesary */
                     newPercentage = channel[num][thisTimer].percentage;
-                }
 
-                /* calculate moon light */
-                // if (newPercentage < (channel[num].fullMoonLevel * moonData.percentLit))
-                //     newPercentage = channel[num].fullMoonLevel * moonData.percentLit;
+                if (newPercentage < fullMoonLevel[num] * moon.percentLit)
+                    newPercentage = fullMoonLevel[num] * moon.percentLit;
 
-                /* done, set the channel */
                 currentPercentage[num] = newPercentage;
 
-                ledcWrite(num, mapFloat(currentPercentage[num],
-                                        0,
-                                        100,
-                                        0,
-                                        LEDC_MAX_VALUE));
+                constexpr const int LEDC_MAX_VALUE = (1 << SOC_LEDC_TIMER_BIT_WIDTH) - 1;
+
+                const bool success = ledcWrite(ledPin[num], mapFloat(currentPercentage[num],
+                                                                     0,
+                                                                     100,
+                                                                     0,
+                                                                     LEDC_MAX_VALUE));
+
+                if (!success)
+                    log_e("error setting duty cycle");
 
                 constexpr const int REFRESHRATE_LCD_HZ = 5;
                 constexpr const TickType_t LCD_WAIT_TIME = 1000 / REFRESHRATE_LCD_HZ;
-                static TickType_t xlastLcdRefresh = 0;
+                static unsigned long xlastLcdRefresh = 0;
 
-                if (millis() - xlastLcdRefresh > LCD_WAIT_TIME)
+                if (millis() - xlastLcdRefresh >= LCD_WAIT_TIME)
                 {
                     lcdMessage_t msg;
                     msg.type = lcdMessageType::UPDATE_LIGHTS;
@@ -106,5 +104,25 @@ void dimmerTask(void *parameter)
                 }
             }
         }
+
+        const int MOON_UPDATE_INTERVAL_SECONDS = 30;
+        static time_t lastMoonUpdate = time(NULL);
+        if (time(NULL) - lastMoonUpdate >= MOON_UPDATE_INTERVAL_SECONDS)
+        {
+            moon = moonPhase.getPhase();
+            lastMoonUpdate = time(NULL);
+            log_i("moon visible %.1f angle %i", moon.percentLit * 100, moon.angle);
+        }
+/*
+        static int lps = 0;
+        lps++;
+        static time_t lastlps = time(NULL);
+        if (time(NULL) != lastlps)
+        {
+            log_i("loops per second: %i", lps);
+            lastlps++;
+            lps = 0;
+        }
+*/        
     }
 }

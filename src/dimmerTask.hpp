@@ -5,6 +5,7 @@
 #include <esp32-hal.h>
 #include <hal/ledc_types.h>
 #include <vector>
+#include <moonPhase.h>
 
 #include "lightTime_t.h"
 #include "lcdMessage_t.h"
