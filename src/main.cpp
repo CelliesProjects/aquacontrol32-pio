@@ -40,6 +40,7 @@ static void startDimmerTask()
 static void ntpCb(void *cb_arg)
 {
     sntp_set_time_sync_notification_cb(NULL);
+    messageOnLcd("");
     startDimmerTask();
     log_i("NTP synced");
 }
@@ -48,11 +49,14 @@ static void parseTimerFile(File &file)
 {
     log_i("parsing '%s'", file.path());
 
+    for (int i = 0; i < NUMBER_OF_CHANNELS;)
+        channel[i++].clear();
+
     String line = file.readStringUntil('\n');
     int currentLine = 1;
     while (file.available())
     {
-        // first of every section line should be in pattern [0-9]
+        // first line of every section should be in pattern [0-9]
         if (line[0] != '[' || !isdigit(line[1]) || line[2] != ']')
         {
             log_e("invalid section header at line %i", currentLine);
@@ -81,7 +85,7 @@ static void parseTimerFile(File &file)
             }
             const int time = line.toInt();                                        // should be in range 0-86400
             const int percentage = line.substring(line.indexOf(",") + 1).toInt(); // should be in range 0-100
-            log_i("%i time: %i, percent: %i",currentChannel, time, percentage);
+            log_v("%i time: %i, percent: %i", currentChannel, time, percentage);
 
             channel[currentChannel].push_back({time, percentage});
 
@@ -91,27 +95,28 @@ static void parseTimerFile(File &file)
     }
 
     // copy the 00:00 timers to 24:00
+    // if channels are empty, fill them with a 00:00 and 24:00 timer at 0%
     for (int ch = 0; ch < NUMBER_OF_CHANNELS; ch++)
         if (channel[ch].size())
             channel[ch].push_back({86400, channel[ch][0].percentage});
+        else
+        {
+            channel[ch].push_back({0, 0});
+            channel[ch].push_back({86400, 0});
+        }
 
     log_i("read %i lines", currentLine);
-    log_i("ch 0: %i timers", channel[0].size());
-    log_i("ch 1: %i timers", channel[1].size());
-    log_i("ch 2: %i timers", channel[2].size());
-    log_i("ch 3: %i timers", channel[3].size());
-    log_i("ch 4: %i timers", channel[4].size());
 }
 
 void setup(void)
 {
     Serial.begin(115200);
+    /*
+        while (!Serial)
+            delay(10);
 
-    while (!Serial)
-        delay(10);
-
-    delay(1000);
-
+        delay(1000);
+    */
     log_i("\n\naquacontrol v2\n\n\n");
 
     if (!lcdQueue)
@@ -123,6 +128,12 @@ void setup(void)
 
     SPI.begin(SCK, MISO, MOSI);
     SPI.setHwCs(true);
+
+    for (int ch = 0; ch < NUMBER_OF_CHANNELS; ch++)          
+    {
+        channel[ch].push_back({0, 0});
+        channel[ch].push_back({86400, 0});
+    }
 
     if (!SD.begin(SS))
         log_w("could not mount SD");
@@ -142,6 +153,12 @@ void setup(void)
         }
     }
 
+    log_i("ch 0: %i timers", channel[0].size());
+    log_i("ch 1: %i timers", channel[1].size());
+    log_i("ch 2: %i timers", channel[2].size());
+    log_i("ch 3: %i timers", channel[3].size());
+    log_i("ch 4: %i timers", channel[4].size());    
+
     WiFi.begin(SSID, PSK);
     WiFi.setSleep(false);
 
@@ -158,12 +175,12 @@ void setup(void)
             delay(100);
     }
 
-    messageOnLcd("AquaControl v2\nWifi connecting...");
+    messageOnLcd("Wifi connecting...");
 
     while (!WiFi.isConnected())
         delay(10);
 
-    messageOnLcd("AquaControl v2\nWifi running\nSyncing clock...");
+    messageOnLcd("Syncing clock...");
 
     log_i("syncing NTP");
     sntp_set_time_sync_notification_cb((sntp_sync_time_cb_t)ntpCb);
