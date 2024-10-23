@@ -30,9 +30,10 @@ void dimmerTask(void *parameter)
 {
     // https://docs.espressif.com/projects/arduino-esp32/en/latest/api/ledc.html
 
-    const int freq = 1200;
-    const uint8_t ledPin[] = {38, 39, 40, 41, 42};
+    const uint8_t ledPin[NUMBER_OF_CHANNELS] = {38, 39, 40, 41, 42};
+    const float fullMoonLevel[NUMBER_OF_CHANNELS] = {0, 0, 0, 0, 0.06};
 
+    const int freq = 1220;
     for (auto current = 0; current < sizeof(ledPin); current++)
         if (!ledcAttach(ledPin[current], freq, SOC_LEDC_TIMER_BIT_WIDTH))
         {
@@ -41,7 +42,6 @@ void dimmerTask(void *parameter)
                 delay(1000);
         }
 
-    const float fullMoonLevel[NUMBER_OF_CHANNELS] = {0, 0, 0, 0, 0.06};
     moonPhase moonPhase;
     moonData_t moon = moonPhase.getPhase();
 
@@ -90,22 +90,21 @@ void dimmerTask(void *parameter)
 
                 if (!success)
                     log_e("error setting duty cycle");
-
-                constexpr const int REFRESHRATE_LCD_HZ = 5;
-                constexpr const TickType_t LCD_WAIT_TIME = 1000 / REFRESHRATE_LCD_HZ;
-                static unsigned long xlastLcdRefresh = 0;
-
-                if (millis() - xlastLcdRefresh >= LCD_WAIT_TIME)
-                {
-                    lcdMessage_t msg;
-                    msg.type = lcdMessageType::UPDATE_LIGHTS;
-                    xQueueSend(lcdQueue, &msg, portMAX_DELAY);
-                    xlastLcdRefresh = millis();
-                }
             }
         }
 
-        const int MOON_UPDATE_INTERVAL_SECONDS = 30;
+        constexpr const int REFRESHRATE_LCD_HZ = 5;
+        constexpr const int LCD_WAIT_TIME = 1000 / REFRESHRATE_LCD_HZ;
+        static unsigned long lastLcdRefresh = 0;
+        if (millis() - lastLcdRefresh >= LCD_WAIT_TIME)
+        {
+            lcdMessage_t msg;
+            msg.type = lcdMessageType::UPDATE_LIGHTS;
+            xQueueSend(lcdQueue, &msg, portMAX_DELAY);
+            lastLcdRefresh = millis();
+        }
+
+        constexpr const int MOON_UPDATE_INTERVAL_SECONDS = 30;
         static time_t lastMoonUpdate = time(NULL);
         if (time(NULL) - lastMoonUpdate >= MOON_UPDATE_INTERVAL_SECONDS)
         {
@@ -113,16 +112,16 @@ void dimmerTask(void *parameter)
             lastMoonUpdate = time(NULL);
             log_i("moon visible %.1f angle %i", moon.percentLit * 100, moon.angle);
         }
-/*
-        static int lps = 0;
-        lps++;
-        static time_t lastlps = time(NULL);
-        if (time(NULL) != lastlps)
-        {
-            log_i("loops per second: %i", lps);
-            lastlps++;
-            lps = 0;
-        }
-*/        
+        /*
+                static int lps = 0;
+                lps++;
+                static time_t lastlps = time(NULL);
+                if (time(NULL) != lastlps)
+                {
+                    log_i("loops per second: %i", lps);
+                    lastlps++;
+                    lps = 0;
+                }
+        */
     }
 }

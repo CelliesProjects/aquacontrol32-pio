@@ -41,8 +41,8 @@ static void ntpCb(void *cb_arg)
 {
     sntp_set_time_sync_notification_cb(NULL);
     messageOnLcd("");
-    startDimmerTask();
     log_i("NTP synced");
+    startDimmerTask();
 }
 
 static void parseTimerFile(File &file)
@@ -111,12 +111,12 @@ static void parseTimerFile(File &file)
 void setup(void)
 {
     Serial.begin(115200);
-    /*
+    
         while (!Serial)
             delay(10);
 
         delay(1000);
-    */
+    
     log_i("\n\naquacontrol v2\n\n\n");
 
     if (!lcdQueue)
@@ -126,14 +126,14 @@ void setup(void)
             delay(100);
     }
 
-    SPI.begin(SCK, MISO, MOSI);
-    SPI.setHwCs(true);
-
     for (int ch = 0; ch < NUMBER_OF_CHANNELS; ch++)          
     {
         channel[ch].push_back({0, 0});
         channel[ch].push_back({86400, 0});
     }
+
+    SPI.begin(SCK, MISO, MOSI);
+    SPI.setHwCs(true);
 
     if (!SD.begin(SS))
         log_w("could not mount SD");

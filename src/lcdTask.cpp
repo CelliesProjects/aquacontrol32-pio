@@ -17,7 +17,7 @@ static void showSystemMessage(char *str)
     if (sysMess.width() == 0 || sysMess.height() == 0)
     {
         sysMess.setColorDepth(lgfx::palette_2bit);
-        if (!sysMess.createSprite(lcd.width(), lcd.height()))
+        if (!sysMess.createSprite(lcd.width(), 3 * font.yAdvance))
         {
             log_e("could not create sprite");
             return;
@@ -36,7 +36,7 @@ static void showSystemMessage(char *str)
         pch = strtok(NULL, "\n");
     }
 
-    sysMess.pushSprite(0, 0);
+    sysMess.pushSprite(0, 96);
 }
 
 static void updateLights()
@@ -50,7 +50,7 @@ static void updateLights()
              currentPercentage[4]);
 
     lcd.setTextColor(lcd.color565(120, 120, 120), 0);
-    lcd.drawCenterString(buffer, lcd.width() >> 1, lcd.height() >> 1, &Font2);
+    lcd.drawCenterString(buffer, lcd.width() >> 1, lcd.height() - Font2.height, &Font2);
 }
 
 void lcdTask(void *parameter)
