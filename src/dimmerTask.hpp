@@ -10,6 +10,8 @@
 #include "lightTime_t.h"
 #include "lcdMessage_t.h"
 
+extern float mapf(const float x, const float in_min, const float in_max, const float out_min, const float out_max);
+
 extern QueueHandle_t lcdQueue;
 
 std::vector<lightTimer_t> channel[NUMBER_OF_CHANNELS];
