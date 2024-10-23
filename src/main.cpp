@@ -111,13 +111,13 @@ static void parseTimerFile(File &file)
 void setup(void)
 {
     Serial.begin(115200);
-    
+/*    
         while (!Serial)
             delay(10);
 
         delay(1000);
-    
-    log_i("\n\naquacontrol v2\n\n\n");
+*/    
+    log_i("aquacontrol v2");
 
     if (!lcdQueue)
     {
