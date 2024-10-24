@@ -65,7 +65,7 @@ static void parseTimerFile(File &file)
         const int currentChannel = atoi(&line[1]);
         log_v("current channel: %i", currentChannel);
 
-        if (currentChannel >= NUMBER_OF_CHANNELS)
+        if (currentChannel >= NUMBER_OF_CHANNELS || currentChannel < 0)
         {
             log_e("invalid channel number at line %i", currentLine);
             break;
@@ -77,14 +77,33 @@ static void parseTimerFile(File &file)
 
         while (isdigit(line[0]))
         {
-            // check if the comma is in a plausible place etc...
-            if (line.indexOf(",") < 1)
+
+            if (line.length() < 3)
+            {
+                log_e("invalid line %i", currentLine);
+                break;
+            }
+
+            if (line.indexOf(",") < 1) // check if the comma is in a plausible place etc...
             {
                 log_e("invalid syntax in line %i parsing channel %i", currentLine, currentChannel);
                 break;
             }
-            const int time = line.toInt();                                        // should be in range 0-86400
+
+            const int time = line.toInt(); // should be in range 0-86399
+            if (time > 86399 || time < 0)
+            {
+                log_e("invalid time value in line %i parsing channel %i", currentLine, currentChannel);
+                break;
+            }
+
             const int percentage = line.substring(line.indexOf(",") + 1).toInt(); // should be in range 0-100
+            if (percentage > 100 || percentage < 0)
+            {
+                log_e("invalid percentage value in line %i parsing channel %i", currentLine, currentChannel);
+                break;
+            }
+
             log_v("%i time: %i, percent: %i", currentChannel, time, percentage);
 
             channel[currentChannel].push_back({time, percentage});
@@ -111,12 +130,12 @@ static void parseTimerFile(File &file)
 void setup(void)
 {
     Serial.begin(115200);
-/*    
-        while (!Serial)
-            delay(10);
 
-        delay(1000);
-*/    
+    while (!Serial)
+        delay(10);
+
+    delay(2000);
+
     log_i("aquacontrol v2");
 
     if (!lcdQueue)
@@ -126,7 +145,7 @@ void setup(void)
             delay(100);
     }
 
-    for (int ch = 0; ch < NUMBER_OF_CHANNELS; ch++)          
+    for (int ch = 0; ch < NUMBER_OF_CHANNELS; ch++)
     {
         channel[ch].push_back({0, 0});
         channel[ch].push_back({86400, 0});
@@ -157,7 +176,7 @@ void setup(void)
     log_i("ch 1: %i timers", channel[1].size());
     log_i("ch 2: %i timers", channel[2].size());
     log_i("ch 3: %i timers", channel[3].size());
-    log_i("ch 4: %i timers", channel[4].size());    
+    log_i("ch 4: %i timers", channel[4].size());
 
     WiFi.begin(SSID, PSK);
     WiFi.setSleep(false);
