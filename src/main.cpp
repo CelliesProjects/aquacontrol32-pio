@@ -60,16 +60,17 @@ static void parseTimerFile(File &file)
         if (line[0] != '[' || !isdigit(line[1]) || line[2] != ']')
         {
             log_e("invalid section header at line %i", currentLine);
-            break;
+            return;
         }
         const int currentChannel = atoi(&line[1]);
-        log_v("current channel: %i", currentChannel);
 
         if (currentChannel >= NUMBER_OF_CHANNELS || currentChannel < 0)
         {
             log_e("invalid channel number at line %i", currentLine);
-            break;
+            return;
         }
+
+        log_v("current channel: %i", currentChannel);
 
         // now parse lines until the line starts with something else than 0-9
         line = file.readStringUntil('\n');
@@ -81,27 +82,27 @@ static void parseTimerFile(File &file)
             if (line.length() < 3)
             {
                 log_e("invalid line %i", currentLine);
-                break;
+                return;
             }
 
             if (line.indexOf(",") < 1) // check if the comma is in a plausible place etc...
             {
                 log_e("invalid syntax in line %i parsing channel %i", currentLine, currentChannel);
-                break;
+                return;
             }
 
             const int time = line.toInt(); // should be in range 0-86399
             if (time > 86399 || time < 0)
             {
                 log_e("invalid time value in line %i parsing channel %i", currentLine, currentChannel);
-                break;
+                return;
             }
 
             const int percentage = line.substring(line.indexOf(",") + 1).toInt(); // should be in range 0-100
             if (percentage > 100 || percentage < 0)
             {
                 log_e("invalid percentage value in line %i parsing channel %i", currentLine, currentChannel);
-                break;
+                return;
             }
 
             log_v("%i time: %i, percent: %i", currentChannel, time, percentage);
