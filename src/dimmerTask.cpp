@@ -52,6 +52,8 @@ void dimmerTask(void *parameter)
 
         if (msElapsedToday) /* to solve flashing at 00:00:000 due to the fact that the first timer has no predecessor at this time*/
         {
+            std::lock_guard<std::mutex> lock(channelMutex);
+            
             for (int num = 0; num < NUMBER_OF_CHANNELS; num++)
             {
                 int currentTimer = 0;

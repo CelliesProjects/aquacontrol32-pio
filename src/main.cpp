@@ -14,6 +14,7 @@ extern void messageOnLcd(const char *str);
 
 extern void dimmerTask(void *parameter);
 extern std::vector<lightTimer_t> channel[NUMBER_OF_CHANNELS];
+extern std::mutex channelMutex;
 
 static void startDimmerTask()
 {
@@ -47,6 +48,8 @@ static void ntpCb(void *cb_arg)
 
 static void parseTimerFile(File &file)
 {
+    std::lock_guard<std::mutex> lock(channelMutex);
+    
     log_i("parsing '%s'", file.path());
 
     for (int i = 0; i < NUMBER_OF_CHANNELS;)

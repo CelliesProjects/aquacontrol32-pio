@@ -5,6 +5,7 @@
 #include <esp32-hal.h>
 #include <hal/ledc_types.h>
 #include <vector>
+#include <mutex>
 #include <moonPhase.h>
 
 #include "lightTime_t.h"
@@ -15,6 +16,7 @@ extern float mapf(const float x, const float in_min, const float in_max, const f
 extern QueueHandle_t lcdQueue;
 
 std::vector<lightTimer_t> channel[NUMBER_OF_CHANNELS];
+std::mutex channelMutex;
 
 float currentPercentage[NUMBER_OF_CHANNELS];
 
