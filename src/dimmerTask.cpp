@@ -29,10 +29,10 @@ void dimmerTask(void *parameter)
     constexpr const float fullMoonLevel[NUMBER_OF_CHANNELS] = {0, 0, 0, 0, 0.06};
 
     const int freq = 1220;
-    for (int current = 0; current < sizeof(ledPin); current++)
-        if (!ledcAttach(ledPin[current], freq, SOC_LEDC_TIMER_BIT_WIDTH))
+    for (int index = 0; index < NUMBER_OF_CHANNELS; index++)
+        if (!ledcAttach(ledPin[index], freq, SOC_LEDC_TIMER_BIT_WIDTH))
         {
-            log_e("Error setting ledc pin %i. system halted", current);
+            log_e("Error setting ledc pin %i. system halted", index);
             while (1)
                 delay(1000);
         }
@@ -49,17 +49,19 @@ void dimmerTask(void *parameter)
         vTaskDelayUntil(&xLastWakeTime, ticksToWait);
         const suseconds_t msElapsedToday = msSinceMidnight();
 
-        if (msElapsedToday)
+        if (msElapsedToday) /* to solve flashing at 00:00:000 due to the fact that the first timer has no predecessor at this time */
         {
             std::lock_guard<std::mutex> lock(channelMutex);
 
             for (int index = 0; index < NUMBER_OF_CHANNELS; index++)
             {
                 int currentTimer = 0;
-                while (currentTimer < channel[index].size() && channel[index][currentTimer].time * 1000U < msElapsedToday)
+                while (channel[index][currentTimer].time * 1000U < msElapsedToday)
                     currentTimer++;
 
-                float newPercentage =
+                currentTimer = (currentTimer >= channel[index].size()) ? channel[index].size() - 1 : currentTimer;
+
+                const float newPercentage =
                     (currentTimer > 0 && channel[index][currentTimer].percentage != channel[index][currentTimer - 1].percentage)
                         ? mapf(msElapsedToday,
                                channel[index][currentTimer - 1].time * 1000U,
