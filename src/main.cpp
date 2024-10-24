@@ -54,20 +54,24 @@ static void parseTimerFile(File &file)
 
     String line = file.readStringUntil('\n');
     int currentLine = 1;
+    bool error = false;
     while (file.available())
     {
+        if (error)
+            break;
+
         // first line of every section should be in pattern [0-9]
         if (line[0] != '[' || !isdigit(line[1]) || line[2] != ']')
         {
             log_e("invalid section header at line %i", currentLine);
-            return;
+            break;
         }
-        const int currentChannel = atoi(&line[1]);
 
+        const int currentChannel = atoi(&line[1]);
         if (currentChannel >= NUMBER_OF_CHANNELS || currentChannel < 0)
         {
             log_e("invalid channel number at line %i", currentLine);
-            return;
+            break;
         }
 
         log_v("current channel: %i", currentChannel);
@@ -78,34 +82,37 @@ static void parseTimerFile(File &file)
 
         while (isdigit(line[0]))
         {
-
             if (line.length() < 3)
             {
                 log_e("invalid line %i", currentLine);
-                return;
+                error = true;
+                break;
             }
 
-            if (line.indexOf(",") < 1) // check if the comma is in a plausible place etc...
+            if (line.indexOf(",") < 1) // check if the comma is in a plausible place
             {
                 log_e("invalid syntax in line %i parsing channel %i", currentLine, currentChannel);
-                return;
+                error = true;
+                break;
             }
 
             const int time = line.toInt(); // should be in range 0-86399
             if (time > 86399 || time < 0)
             {
                 log_e("invalid time value in line %i parsing channel %i", currentLine, currentChannel);
-                return;
+                error = true;
+                break;
             }
 
             const int percentage = line.substring(line.indexOf(",") + 1).toInt(); // should be in range 0-100
             if (percentage > 100 || percentage < 0)
             {
                 log_e("invalid percentage value in line %i parsing channel %i", currentLine, currentChannel);
-                return;
+                error = true;
+                break;
             }
 
-            log_v("%i time: %i, percent: %i", currentChannel, time, percentage);
+            log_v("adding timer for channel %i time: %i, percent: %i", currentChannel, time, percentage);
 
             channel[currentChannel].push_back({time, percentage});
 
