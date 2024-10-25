@@ -79,7 +79,7 @@ static void parseTimerFile(File &file)
 
             log_v("current channel: %i", currentChannel);
 
-            // now parse lines until the line starts with something else than 0-9
+            // now parse lines until the line starts with something else than a digit
             line = file.readStringUntil('\n');
             currentLine++;
 
@@ -134,7 +134,7 @@ static void parseTimerFile(File &file)
                 channel[index].push_back({0, 0});
                 channel[index].push_back({86400, 0});
             }
-    }
+    } // channelMutex unlocks here
 
     log_v("read %i lines", currentLine);
 }
@@ -142,12 +142,12 @@ static void parseTimerFile(File &file)
 void setup(void)
 {
     Serial.begin(115200);
-
+/*
     while (!Serial)
         delay(10);
 
     delay(2000);
-
+*/
     log_i("aquacontrol v2");
 
     if (!lcdQueue)
