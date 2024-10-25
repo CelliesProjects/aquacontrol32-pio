@@ -117,7 +117,12 @@ static void parseTimerFile(File &file)
 
                 log_v("adding timer for channel %i time: %i, percent: %i", currentChannel, time, percentage);
 
-                channel[currentChannel].push_back({time, percentage});
+                auto insertPos =
+                    std::lower_bound(channel[currentChannel].begin(), channel[currentChannel].end(),
+                                     lightTimer_t{time, percentage}, [](const lightTimer_t &a, const lightTimer_t &b)
+                                     { return a.time < b.time; });
+
+                channel[currentChannel].insert(insertPos, {time, percentage});
 
                 line = file.readStringUntil('\n');
                 currentLine++;
