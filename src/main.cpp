@@ -50,88 +50,91 @@ static void parseTimerFile(File &file)
 {
     log_i("parsing '%s'", file.path());
 
-    std::lock_guard<std::mutex> lock(channelMutex);
-
-    for (int i = 0; i < NUMBER_OF_CHANNELS;)
-        channel[i++].clear();
-
-    String line = file.readStringUntil('\n');
-    int currentLine = 1;
-    bool error = false;
-
-    while (file.available() && !error)
+    // extra scope block to contain the lock
     {
-        // first line of every section should be in pattern [0-9]
-        if (line[0] != '[' || !isdigit(line[1]) || line[2] != ']')
+        std::lock_guard<std::mutex> lock(channelMutex);
+
+        for (int i = 0; i < NUMBER_OF_CHANNELS;)
+            channel[i++].clear();
+
+        String line = file.readStringUntil('\n');
+        int currentLine = 1;
+        bool error = false;
+
+        while (file.available() && !error)
         {
-            log_e("invalid section header at line %i", currentLine);
-            break;
-        }
-
-        const int currentChannel = atoi(&line[1]);
-        if (currentChannel >= NUMBER_OF_CHANNELS || currentChannel < 0)
-        {
-            log_e("invalid channel number at line %i", currentLine);
-            break;
-        }
-
-        log_v("current channel: %i", currentChannel);
-
-        // now parse lines until the line starts with something else than 0-9
-        line = file.readStringUntil('\n');
-        currentLine++;
-
-        while (isdigit(line[0]))
-        {
-            if (line.length() < 3)
+            // first line of every section should be in pattern [0-9]
+            if (line[0] != '[' || !isdigit(line[1]) || line[2] != ']')
             {
-                log_e("invalid line %i", currentLine);
-                error = true;
+                log_e("invalid section header at line %i", currentLine);
                 break;
             }
 
-            if (line.indexOf(",") < 1) // check if the comma is in a plausible place
+            const int currentChannel = atoi(&line[1]);
+            if (currentChannel >= NUMBER_OF_CHANNELS || currentChannel < 0)
             {
-                log_e("invalid syntax in line %i parsing channel %i", currentLine, currentChannel);
-                error = true;
+                log_e("invalid channel number at line %i", currentLine);
                 break;
             }
 
-            const int time = line.toInt(); // should be in range 0-86399
-            if (time > 86399 || time < 0)
-            {
-                log_e("invalid time value in line %i parsing channel %i", currentLine, currentChannel);
-                error = true;
-                break;
-            }
+            log_v("current channel: %i", currentChannel);
 
-            const int percentage = line.substring(line.indexOf(",") + 1).toInt(); // should be in range 0-100
-            if (percentage > 100 || percentage < 0)
-            {
-                log_e("invalid percentage value in line %i parsing channel %i", currentLine, currentChannel);
-                error = true;
-                break;
-            }
-
-            log_v("adding timer for channel %i time: %i, percent: %i", currentChannel, time, percentage);
-
-            channel[currentChannel].push_back({time, percentage});
-
+            // now parse lines until the line starts with something else than 0-9
             line = file.readStringUntil('\n');
             currentLine++;
-        }
-    }
 
-    // copy the 00:00 timers to 24:00
-    // if channels are empty, fill them with a 00:00 and 24:00 timer at 0%
-    for (int index = 0; index < NUMBER_OF_CHANNELS; index++)
-        if (channel[index].size())
-            channel[index].push_back({86400, channel[index][0].percentage});
-        else
-        {
-            channel[index].push_back({0, 0});
-            channel[index].push_back({86400, 0});
+            while (isdigit(line[0]))
+            {
+                if (line.length() < 3)
+                {
+                    log_e("invalid line %i", currentLine);
+                    error = true;
+                    break;
+                }
+
+                if (line.indexOf(",") < 1) // check if the comma is in a plausible place
+                {
+                    log_e("invalid syntax in line %i parsing channel %i", currentLine, currentChannel);
+                    error = true;
+                    break;
+                }
+
+                const int time = line.toInt(); // should be in range 0-86399
+                if (time > 86399 || time < 0)
+                {
+                    log_e("invalid time value in line %i parsing channel %i", currentLine, currentChannel);
+                    error = true;
+                    break;
+                }
+
+                const int percentage = line.substring(line.indexOf(",") + 1).toInt(); // should be in range 0-100
+                if (percentage > 100 || percentage < 0)
+                {
+                    log_e("invalid percentage value in line %i parsing channel %i", currentLine, currentChannel);
+                    error = true;
+                    break;
+                }
+
+                log_v("adding timer for channel %i time: %i, percent: %i", currentChannel, time, percentage);
+
+                channel[currentChannel].push_back({time, percentage});
+
+                line = file.readStringUntil('\n');
+                currentLine++;
+            }
         }
+
+        // copy the 00:00 timers to 24:00
+        // if channels are empty, fill them with a 00:00 and 24:00 timer at 0%
+        for (int index = 0; index < NUMBER_OF_CHANNELS; index++)
+            if (channel[index].size())
+                channel[index].push_back({86400, channel[index][0].percentage});
+            else
+            {
+                channel[index].push_back({0, 0});
+                channel[index].push_back({86400, 0});
+            }
+    }
 
     log_v("read %i lines", currentLine);
 }
