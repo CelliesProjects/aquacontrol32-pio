@@ -58,6 +58,7 @@ static void parseTimerFile(File &file)
     String line = file.readStringUntil('\n');
     int currentLine = 1;
     bool error = false;
+    
     while (file.available() && !error)
     {
         // first line of every section should be in pattern [0-9]
