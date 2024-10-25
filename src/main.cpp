@@ -45,12 +45,17 @@ static void ntpCb(void *cb_arg)
     log_i("NTP synced");
     startDimmerTask();
 }
-
 static void parseTimerFile(File &file)
 {
     log_i("parsing '%s'", file.path());
 
-    // extra scope block to contain the lock
+    constexpr int MAX_TIME = 86400;
+    constexpr int MAX_SECONDS_IN_A_DAY = 86399;
+    constexpr int MAX_PERCENTAGE = 100;
+    constexpr int MIN_PERCENTAGE = 0;
+    constexpr int MIN_CHANNEL = 0;
+    constexpr int MAX_CHANNEL = NUMBER_OF_CHANNELS - 1;
+
     {
         std::lock_guard<std::mutex> lock(channelMutex);
 
@@ -63,15 +68,21 @@ static void parseTimerFile(File &file)
 
         while (file.available() && !error)
         {
-            // first line of every section should be in pattern [0-9]
-            if (line[0] != '[' || !isdigit(line[1]) || line[2] != ']')
+            if (line.isEmpty()) // Skip empty lines
+            {
+                line = file.readStringUntil('\n');
+                currentLine++;
+                continue;
+            }
+
+            if (line.length() < 3 || line[0] != '[' || !isdigit(line[1]) || line[2] != ']')
             {
                 log_e("invalid section header at line %i", currentLine);
                 break;
             }
 
             const int currentChannel = atoi(&line[1]);
-            if (currentChannel >= NUMBER_OF_CHANNELS || currentChannel < 0)
+            if (currentChannel > MAX_CHANNEL || currentChannel < MIN_CHANNEL)
             {
                 log_e("invalid channel number at line %i", currentLine);
                 break;
@@ -79,12 +90,18 @@ static void parseTimerFile(File &file)
 
             log_v("current channel: %i", currentChannel);
 
-            // now parse lines until the line starts with something else than a digit
             line = file.readStringUntil('\n');
             currentLine++;
 
-            while (isdigit(line[0]))
+            while (line.length() && isdigit(line[0]) || line.isEmpty())
             {
+                if (line.isEmpty()) // Skip empty lines
+                {
+                    line = file.readStringUntil('\n');
+                    currentLine++;
+                    continue;
+                }
+
                 if (line.length() < 3)
                 {
                     log_e("invalid line %i", currentLine);
@@ -92,36 +109,42 @@ static void parseTimerFile(File &file)
                     break;
                 }
 
-                if (line.indexOf(",") < 1) // check if the comma is in a plausible place
+                if (line.indexOf(",") < 1)
                 {
                     log_e("invalid syntax in line %i parsing channel %i", currentLine, currentChannel);
                     error = true;
                     break;
                 }
 
-                const int time = line.toInt(); // should be in range 0-86399
-                if (time > 86399 || time < 0)
+                const int time = line.toInt();
+                if (time > MAX_SECONDS_IN_A_DAY || time < 0)
                 {
                     log_e("invalid time value in line %i parsing channel %i", currentLine, currentChannel);
                     error = true;
                     break;
                 }
 
-                const int percentage = line.substring(line.indexOf(",") + 1).toInt(); // should be in range 0-100
-                if (percentage > 100 || percentage < 0)
+                const int percentage = line.substring(line.indexOf(",") + 1).toInt();
+                if (percentage > MAX_PERCENTAGE || percentage < MIN_PERCENTAGE)
                 {
                     log_e("invalid percentage value in line %i parsing channel %i", currentLine, currentChannel);
                     error = true;
                     break;
                 }
 
-                log_v("adding timer for channel %i time: %i, percent: %i", currentChannel, time, percentage);
-
                 auto insertPos =
                     std::lower_bound(channel[currentChannel].begin(), channel[currentChannel].end(),
                                      lightTimer_t{time, percentage}, [](const lightTimer_t &a, const lightTimer_t &b)
                                      { return a.time < b.time; });
 
+                if (insertPos != channel[currentChannel].end() && insertPos->time == time)
+                {
+                    log_e("duplicate timer entry at line %i for channel %i at time %i", currentLine, currentChannel, time);
+                    error = true;
+                    break;
+                }
+
+                log_v("adding timer for channel %i time: %i, percent: %i", currentChannel, time, percentage);
                 channel[currentChannel].insert(insertPos, {time, percentage});
 
                 line = file.readStringUntil('\n');
@@ -129,17 +152,15 @@ static void parseTimerFile(File &file)
             }
         }
 
-        // copy the 00:00 timers to 24:00
-        // if channels are empty, fill them with a 00:00 and 24:00 timer at 0%
         for (int index = 0; index < NUMBER_OF_CHANNELS; index++)
             if (channel[index].size())
-                channel[index].push_back({86400, channel[index][0].percentage});
+                channel[index].push_back({MAX_TIME, channel[index][0].percentage});
             else
             {
                 channel[index].push_back({0, 0});
-                channel[index].push_back({86400, 0});
+                channel[index].push_back({MAX_TIME, 0});
             }
-    } // channelMutex unlocks here
+    }
 
     log_v("read %i lines", currentLine);
 }
@@ -147,12 +168,12 @@ static void parseTimerFile(File &file)
 void setup(void)
 {
     Serial.begin(115200);
-/*
+
     while (!Serial)
         delay(10);
 
     delay(2000);
-*/
+
     log_i("aquacontrol v2");
 
     if (!lcdQueue)
