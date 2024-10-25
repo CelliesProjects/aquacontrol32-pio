@@ -48,9 +48,9 @@ static void ntpCb(void *cb_arg)
 
 static void parseTimerFile(File &file)
 {
-    std::lock_guard<std::mutex> lock(channelMutex);
-    
     log_i("parsing '%s'", file.path());
+
+    std::lock_guard<std::mutex> lock(channelMutex);
 
     for (int i = 0; i < NUMBER_OF_CHANNELS;)
         channel[i++].clear();
@@ -58,7 +58,7 @@ static void parseTimerFile(File &file)
     String line = file.readStringUntil('\n');
     int currentLine = 1;
     bool error = false;
-    
+
     while (file.available() && !error)
     {
         // first line of every section should be in pattern [0-9]
@@ -124,16 +124,16 @@ static void parseTimerFile(File &file)
 
     // copy the 00:00 timers to 24:00
     // if channels are empty, fill them with a 00:00 and 24:00 timer at 0%
-    for (int ch = 0; ch < NUMBER_OF_CHANNELS; ch++)
-        if (channel[ch].size())
-            channel[ch].push_back({86400, channel[ch][0].percentage});
+    for (int index = 0; index < NUMBER_OF_CHANNELS; index++)
+        if (channel[index].size())
+            channel[index].push_back({86400, channel[index][0].percentage});
         else
         {
-            channel[ch].push_back({0, 0});
-            channel[ch].push_back({86400, 0});
+            channel[index].push_back({0, 0});
+            channel[index].push_back({86400, 0});
         }
 
-    log_i("read %i lines", currentLine);
+    log_v("read %i lines", currentLine);
 }
 
 void setup(void)
