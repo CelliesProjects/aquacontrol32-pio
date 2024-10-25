@@ -23,8 +23,6 @@ static unsigned long long msSinceMidnight()
 
 void dimmerTask(void *parameter)
 {
-    // https://docs.espressif.com/projects/arduino-esp32/en/latest/api/ledc.html
-
     constexpr const uint8_t ledPin[NUMBER_OF_CHANNELS] = {38, 39, 40, 41, 42};
     constexpr const float fullMoonLevel[NUMBER_OF_CHANNELS] = {0, 0, 0, 0, 0.06};
 
@@ -39,6 +37,14 @@ void dimmerTask(void *parameter)
 
     moonPhase moonPhase;
     moonData_t moon = moonPhase.getPhase();
+
+    {
+        lcdMessage_t msg;
+        msg.type = lcdMessageType::MOON_PHASE;
+        msg.float1 = moon.percentLit * 100;
+        msg.int1 = moon.angle;
+        xQueueSend(lcdQueue, &msg, portMAX_DELAY);
+    }
 
     constexpr const int TICK_RATE_HZ = 100;
     const TickType_t ticksToWait = pdTICKS_TO_MS(1000 / TICK_RATE_HZ);
@@ -93,13 +99,19 @@ void dimmerTask(void *parameter)
             lastLcdRefresh = millis();
         }
 
-        constexpr const int MOON_UPDATE_INTERVAL_SECONDS = 30;
+        constexpr const int MOON_UPDATE_INTERVAL_SECONDS = 1;
         static time_t lastMoonUpdate = time(NULL);
         if (time(NULL) - lastMoonUpdate >= MOON_UPDATE_INTERVAL_SECONDS)
         {
             moon = moonPhase.getPhase();
             lastMoonUpdate = time(NULL);
             log_i("moon visible %.1f angle %i", moon.percentLit * 100, moon.angle);
+
+            lcdMessage_t msg;
+            msg.type = lcdMessageType::MOON_PHASE;
+            msg.float1 = moon.percentLit * 100;
+            msg.int1 = moon.angle;
+            xQueueSend(lcdQueue, &msg, portMAX_DELAY);
         }
 /*
         static int lps = 0;

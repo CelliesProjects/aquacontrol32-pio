@@ -4,13 +4,16 @@
 enum lcdMessageType
 {
     LCD_SYSTEM_MESSAGE,
-    UPDATE_LIGHTS
+    UPDATE_LIGHTS,
+    MOON_PHASE
 };
 
 struct lcdMessage_t
 {
     lcdMessageType type;
     char str[64];
+    int32_t int1;
+    float float1;
 };
 
 #endif

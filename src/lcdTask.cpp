@@ -85,6 +85,13 @@ static void updateLights()
     lightBars.pushSprite(0, 60);
 }
 
+static void showMoon(float percentlit, int angle)
+{
+    char buffer[64];
+    lcd.setTextColor(lcd.color565(220, 220, 220), 0);
+    snprintf(buffer, sizeof(buffer), "moon % 3.4f%% lit   angle %03i", percentlit, angle);
+    lcd.drawCenterString(buffer, lcd.width() >> 1, 5, &DejaVu12);
+}
 static void updateClock(const struct tm &timeinfo)
 {
     const GFXfont &font = lgfx::fonts::DejaVu18;
@@ -125,6 +132,10 @@ void lcdTask(void *parameter)
             case lcdMessageType::UPDATE_LIGHTS:
                 updateLights();
                 break;
+
+            case lcdMessageType::MOON_PHASE:
+                showMoon(msg.float1, msg.int1);
+                break;                
 
             default:
                 break;
