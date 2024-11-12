@@ -93,7 +93,7 @@ static void parseTimerFile(File &file)
             line = file.readStringUntil('\n');
             currentLine++;
 
-            while (line.length() && isdigit(line[0]) || line.isEmpty())
+            while ((line.length() && isdigit(line[0])) || line.isEmpty())
             {
                 if (line.isEmpty()) // Skip empty lines
                 {
