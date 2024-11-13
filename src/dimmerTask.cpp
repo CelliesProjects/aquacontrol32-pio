@@ -53,7 +53,7 @@ void dimmerTask(void *parameter)
     while (1)
     {
         vTaskDelayUntil(&xLastWakeTime, ticksToWait);
-        const suseconds_t msElapsedToday = msSinceMidnight();
+        const auto msElapsedToday = msSinceMidnight();
 
         if (msElapsedToday) /* to solve flashing at 00:00:000 due to the fact that the first timer has no predecessor at this time */
         {

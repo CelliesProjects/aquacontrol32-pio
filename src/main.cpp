@@ -169,7 +169,6 @@ void setup(void)
 {
     Serial.begin(115200);
 
-
     log_i("aquacontrol v2");
 
     if (!lcdQueue)
@@ -219,7 +218,7 @@ void setup(void)
     {
         log_e("could not set ledc clock source. system halted!");
         while (1)
-            delay(100);        
+            delay(100);
     }
 
     BaseType_t result = xTaskCreate(lcdTask,
@@ -245,10 +244,8 @@ void setup(void)
     log_i("syncing NTP");
     sntp_set_time_sync_notification_cb((sntp_sync_time_cb_t)ntpCb);
     configTzTime(TIMEZONE, NTP_POOL);
+
+    vTaskDelete(NULL);
 }
 
-void loop()
-{
-    // put your main code here, to run repeatedly:
-    delay(100);
-}
+void loop() {}
