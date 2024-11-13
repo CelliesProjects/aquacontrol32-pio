@@ -169,10 +169,6 @@ void setup(void)
 {
     Serial.begin(115200);
 
-    while (!Serial)
-        delay(10);
-
-    delay(2000);
 
     log_i("aquacontrol v2");
 
@@ -218,6 +214,13 @@ void setup(void)
 
     WiFi.begin(SSID, PSK);
     WiFi.setSleep(false);
+
+    if (!ledcSetClockSource(LEDC_USE_APB_CLK))
+    {
+        log_e("could not set ledc clock source. system halted!");
+        while (1)
+            delay(100);        
+    }
 
     BaseType_t result = xTaskCreate(lcdTask,
                                     NULL,
