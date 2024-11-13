@@ -26,9 +26,9 @@ void dimmerTask(void *parameter)
     constexpr const uint8_t ledPin[NUMBER_OF_CHANNELS] = {38, 39, 40, 41, 42};
     constexpr const float fullMoonLevel[NUMBER_OF_CHANNELS] = {0, 0, 0, 0, 0.06};
 
-    const int freq = 1220;
+    const int freq = 1200;
     for (int index = 0; index < NUMBER_OF_CHANNELS; index++)
-        if (!ledcAttach(ledPin[index], freq, SOC_LEDC_TIMER_BIT_WIDTH))
+        if (!ledcAttachChannel(ledPin[index], freq, SOC_LEDC_TIMER_BIT_WIDTH, index + 2))
         {
             log_e("Error setting ledc pin %i. system halted", index);
             while (1)
@@ -105,7 +105,7 @@ void dimmerTask(void *parameter)
         {
             moon = moonPhase.getPhase();
             lastMoonUpdate = time(NULL);
-            log_i("moon visible %.1f angle %i", moon.percentLit * 100, moon.angle);
+            log_d("moon visible %f angle %i", moon.percentLit * 100, moon.angle);
 
             lcdMessage_t msg;
             msg.type = lcdMessageType::MOON_PHASE;
