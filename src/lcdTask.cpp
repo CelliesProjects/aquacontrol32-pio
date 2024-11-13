@@ -92,6 +92,7 @@ static void showMoon(float percentlit, int angle)
     snprintf(buffer, sizeof(buffer), "moon % 3.4f%% lit   angle %03i", percentlit, angle);
     lcd.drawCenterString(buffer, lcd.width() >> 1, 5, &DejaVu12);
 }
+
 static void updateClock(const struct tm &timeinfo)
 {
     const GFXfont &font = lgfx::fonts::DejaVu18;
@@ -114,9 +115,8 @@ static void updateClock(const struct tm &timeinfo)
 
 void lcdTask(void *parameter)
 {
-    lcd.setColorDepth(lgfx::rgb565_2Byte);
-    lcd.setBrightness(80);
     lcd.init();
+    lcd.setBrightness(38);
 
     while (1)
     {
@@ -125,6 +125,10 @@ void lcdTask(void *parameter)
         {
             switch (msg.type)
             {
+            case lcdMessageType::SET_BRIGHTNESS:
+                lcd.setBrightness(msg.int1);
+                break;
+
             case lcdMessageType::LCD_SYSTEM_MESSAGE:
                 showSystemMessage(msg.str);
                 break;
@@ -135,12 +139,13 @@ void lcdTask(void *parameter)
 
             case lcdMessageType::MOON_PHASE:
                 showMoon(msg.float1, msg.int1);
-                break;                
+                break;
 
             default:
                 break;
             }
         }
+
         static time_t lastSecond = 0;
         if (time(NULL) != lastSecond)
         {

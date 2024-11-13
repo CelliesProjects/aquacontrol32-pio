@@ -3,6 +3,7 @@
 
 enum lcdMessageType
 {
+    SET_BRIGHTNESS,
     LCD_SYSTEM_MESSAGE,
     UPDATE_LIGHTS,
     MOON_PHASE
