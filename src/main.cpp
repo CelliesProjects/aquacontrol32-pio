@@ -169,6 +169,10 @@ void setup(void)
 {
     Serial.begin(115200);
 
+#ifdef LGFX_M5STACK
+    pinMode(DAC1, OUTPUT); // prevents high pitched noise on the builtin speaker which is connected to DAC1
+#endif
+
     log_i("aquacontrol v2");
 
     if (!lcdQueue)
@@ -187,7 +191,7 @@ void setup(void)
     SPI.begin(SCK, MISO, MOSI);
     SPI.setHwCs(true);
 
-    if (!SD.begin(SS))
+    if (!SD.begin(SDCARD_SS))
         log_w("could not mount SD");
     else
     {

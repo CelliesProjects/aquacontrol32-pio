@@ -23,12 +23,23 @@ static unsigned long long msSinceMidnight()
 
 void dimmerTask(void *parameter)
 {
-    constexpr const uint8_t ledPin[NUMBER_OF_CHANNELS] = {38, 39, 40, 41, 42};
-    constexpr const float fullMoonLevel[NUMBER_OF_CHANNELS] = {0, 0, 0, 0, 0.06};
+    static constexpr const uint8_t ledPin[NUMBER_OF_CHANNELS] =
+        {LEDPIN_0, LEDPIN_1, LEDPIN_2, LEDPIN_3, LEDPIN_4};
+    static constexpr const float fullMoonLevel[NUMBER_OF_CHANNELS] =
+        {0, 0, 0, 0, 0.06};
+    static constexpr const int PWM_BITDEPTH = min(SOC_LEDC_TIMER_BIT_WIDTH, 16);
+    static constexpr const int LEDC_MAX_VALUE = (1 << PWM_BITDEPTH) - 1;
+    static constexpr const int freq = 1220;
 
-    const int freq = 1200;
+#ifdef LGFX_M5STACK
+    static constexpr const int BACKLIGHT_PIN = 32;
+    if (!ledcChangeFrequency(BACKLIGHT_PIN, freq, PWM_BITDEPTH) ||
+        !ledcWrite(BACKLIGHT_PIN, LEDC_MAX_VALUE >> 6))
+        log_w("Could not capture M5Stack backlight");
+#endif
+
     for (int index = 0; index < NUMBER_OF_CHANNELS; index++)
-        if (!ledcAttachChannel(ledPin[index], freq, SOC_LEDC_TIMER_BIT_WIDTH, index + 2))
+        if (!ledcAttachChannel(ledPin[index], freq, PWM_BITDEPTH, index + 2))
         {
             log_e("Error setting ledc pin %i. system halted", index);
             while (1)
@@ -80,7 +91,6 @@ void dimmerTask(void *parameter)
 
                 currentPercentage[index] = newPercentage < currentMoonLevel ? currentMoonLevel : newPercentage;
 
-                constexpr const int LEDC_MAX_VALUE = (1 << SOC_LEDC_TIMER_BIT_WIDTH) - 1;
                 const int dutyCycle = mapf(currentPercentage[index], 0, 100, 0, LEDC_MAX_VALUE);
 
                 if (!ledcWrite(ledPin[index], dutyCycle))
@@ -99,7 +109,7 @@ void dimmerTask(void *parameter)
             lastLcdRefresh = millis();
         }
 
-        constexpr const int MOON_UPDATE_INTERVAL_SECONDS = 1;
+        constexpr const int MOON_UPDATE_INTERVAL_SECONDS = 5;
         static time_t lastMoonUpdate = time(NULL);
         if (time(NULL) - lastMoonUpdate >= MOON_UPDATE_INTERVAL_SECONDS)
         {
@@ -113,16 +123,16 @@ void dimmerTask(void *parameter)
             msg.int1 = moon.angle;
             xQueueSend(lcdQueue, &msg, portMAX_DELAY);
         }
-/*
-        static int lps = 0;
-        lps++;
-        static time_t lastlps = time(NULL);
-        if (time(NULL) != lastlps)
-        {
-            log_i("loops per second: %i", lps);
-            lastlps++;
-            lps = 0;
-        }
-*/        
+        /*
+                static int lps = 0;
+                lps++;
+                static time_t lastlps = time(NULL);
+                if (time(NULL) != lastlps)
+                {
+                    log_i("loops per second: %i", lps);
+                    lastlps++;
+                    lps = 0;
+                }
+        */
     }
 }
