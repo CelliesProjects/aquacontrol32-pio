@@ -126,11 +126,11 @@ void dimmerTask(void *parameter)
         /*
                 static int lps = 0;
                 lps++;
-                static time_t lastlps = time(NULL);
-                if (time(NULL) != lastlps)
+                static time_t currentSecond = time(NULL);
+                if (time(NULL) != currentSecond)
                 {
                     log_i("loops per second: %i", lps);
-                    lastlps++;
+                    currentSecond++;
                     lps = 0;
                 }
         */
