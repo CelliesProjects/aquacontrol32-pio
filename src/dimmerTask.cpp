@@ -34,7 +34,7 @@ void dimmerTask(void *parameter)
 #ifdef LGFX_M5STACK
     static constexpr const int BACKLIGHT_PIN = 32;
     if (!ledcChangeFrequency(BACKLIGHT_PIN, freq, PWM_BITDEPTH) ||
-        !ledcWrite(BACKLIGHT_PIN, LEDC_MAX_VALUE >> 6))
+        !ledcWrite(BACKLIGHT_PIN, LEDC_MAX_VALUE >> 5))
         log_w("Could not capture M5Stack backlight");
 #endif
 
@@ -66,7 +66,7 @@ void dimmerTask(void *parameter)
         vTaskDelayUntil(&xLastWakeTime, ticksToWait);
         const auto msElapsedToday = msSinceMidnight();
 
-        if (msElapsedToday) /* to solve flashing at 00:00:000 due to the fact that the first timer has no predecessor at this time */
+        if (msElapsedToday) /* to prevent flashing at 00:00:000 due to the fact that the first timer has no predecessor at this time */
         {
             std::lock_guard<std::mutex> lock(channelMutex);
 

@@ -1,7 +1,7 @@
 #ifndef _DISPLAY_TASK_
 #define _DISPLAY_TASK_
 
-#include <LovyanGFX.hpp>
+#define LGFX_AUTODETECT
 #include <LGFX_AUTODETECT.hpp>
 
 #include "lcdMessage_t.h"

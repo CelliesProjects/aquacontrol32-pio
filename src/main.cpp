@@ -40,9 +40,8 @@ static void startDimmerTask()
 
 static void ntpCb(void *cb_arg)
 {
-    sntp_set_time_sync_notification_cb(NULL);
-    messageOnLcd("");
     log_i("NTP synced");
+    sntp_set_time_sync_notification_cb(NULL);
     startDimmerTask();
 }
 static void parseTimerFile(File &file)
@@ -170,7 +169,7 @@ void setup(void)
     Serial.begin(115200);
 
 #ifdef LGFX_M5STACK
-    pinMode(DAC1, OUTPUT); // prevents high pitched noise on the builtin speaker which is connected to DAC1
+    pinMode(DAC1, OUTPUT); // prevents high pitched noise on the builtin speaker which is connected to the first DAC
 #endif
 
     log_i("aquacontrol v2");
