@@ -3,6 +3,8 @@
 #include <SPI.h>
 #include <SD.h>
 #include <esp_sntp.h>
+#include <vector>
+#include <mutex>
 
 #include "secrets.h"
 #include "lcdMessage_t.h"
