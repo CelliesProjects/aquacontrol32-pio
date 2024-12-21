@@ -23,16 +23,16 @@ static unsigned long long msSinceMidnight()
 
 void dimmerTask(void *parameter)
 {
-    static constexpr const uint8_t ledPin[NUMBER_OF_CHANNELS] =
+    static constexpr uint8_t ledPin[NUMBER_OF_CHANNELS] =
         {LEDPIN_0, LEDPIN_1, LEDPIN_2, LEDPIN_3, LEDPIN_4};
-    static constexpr const float fullMoonLevel[NUMBER_OF_CHANNELS] =
+    static constexpr float fullMoonLevel[NUMBER_OF_CHANNELS] =
         {0, 0, 0, 0, 0.06};
-    static constexpr const int PWM_BITDEPTH = min(SOC_LEDC_TIMER_BIT_WIDTH, 16);
-    static constexpr const int LEDC_MAX_VALUE = (1 << PWM_BITDEPTH) - 1;
-    static constexpr const int freq = 1220;
+    static constexpr int PWM_BITDEPTH = min(SOC_LEDC_TIMER_BIT_WIDTH, 16);
+    static constexpr int LEDC_MAX_VALUE = (1 << PWM_BITDEPTH) - 1;
+    static constexpr int freq = 1220;
 
 #ifdef LGFX_M5STACK
-    static constexpr const int BACKLIGHT_PIN = 32;
+    static constexpr int BACKLIGHT_PIN = 32;
     if (!ledcChangeFrequency(BACKLIGHT_PIN, freq, PWM_BITDEPTH) ||
         !ledcWrite(BACKLIGHT_PIN, LEDC_MAX_VALUE >> 5))
         log_w("Could not capture M5Stack backlight");
@@ -57,8 +57,8 @@ void dimmerTask(void *parameter)
         xQueueSend(lcdQueue, &msg, portMAX_DELAY);
     }
 
-    constexpr const int TICK_RATE_HZ = 100;
-    const TickType_t ticksToWait = pdTICKS_TO_MS(1000 / TICK_RATE_HZ);
+    constexpr int TICK_RATE_HZ = 100;
+    constexpr TickType_t ticksToWait = pdTICKS_TO_MS(1000 / TICK_RATE_HZ);
     TickType_t xLastWakeTime = xTaskGetTickCount();
 
     while (1)
@@ -70,39 +70,39 @@ void dimmerTask(void *parameter)
 
             const auto msElapsedToday = msSinceMidnight();
 
-            if (msElapsedToday) /* to prevent flashing at 00:00:000 due to the fact that the first timer has no predecessor at this time */
+            if (!msElapsedToday) /* to prevent flashing lights at 00:00:000 */
+                continue;
+
+            for (int index = 0; index < NUMBER_OF_CHANNELS; index++)
             {
-                for (int index = 0; index < NUMBER_OF_CHANNELS; index++)
-                {
-                    int currentTimer = 0;
-                    while (channel[index][currentTimer].time * 1000U < msElapsedToday)
-                        currentTimer++;
+                int currentTimer = 0;
+                while (channel[index][currentTimer].time * 1000U < msElapsedToday)
+                    currentTimer++;
 
-                    currentTimer = (currentTimer >= channel[index].size()) ? channel[index].size() - 1 : currentTimer;
+                currentTimer = (currentTimer >= channel[index].size()) ? channel[index].size() - 1 : currentTimer;
 
-                    const float newPercentage =
-                        (currentTimer > 0 && channel[index][currentTimer].percentage != channel[index][currentTimer - 1].percentage)
-                            ? mapf(msElapsedToday,
-                                   channel[index][currentTimer - 1].time * 1000U,
-                                   channel[index][currentTimer].time * 1000U,
-                                   channel[index][currentTimer - 1].percentage,
-                                   channel[index][currentTimer].percentage)
-                            : channel[index][currentTimer].percentage;
+                const float newPercentage =
+                    (currentTimer > 0 && channel[index][currentTimer].percentage != channel[index][currentTimer - 1].percentage)
+                        ? mapf(msElapsedToday,
+                               channel[index][currentTimer - 1].time * 1000U,
+                               channel[index][currentTimer].time * 1000U,
+                               channel[index][currentTimer - 1].percentage,
+                               channel[index][currentTimer].percentage)
+                        : channel[index][currentTimer].percentage;
 
-                    const float currentMoonLevel = fullMoonLevel[index] * moon.percentLit;
+                const float currentMoonLevel = fullMoonLevel[index] * moon.percentLit;
 
-                    currentPercentage[index] = newPercentage < currentMoonLevel ? currentMoonLevel : newPercentage;
+                currentPercentage[index] = newPercentage < currentMoonLevel ? currentMoonLevel : newPercentage;
 
-                    const int dutyCycle = mapf(currentPercentage[index], 0, 100, 0, LEDC_MAX_VALUE);
+                const int dutyCycle = mapf(currentPercentage[index], 0, 100, 0, LEDC_MAX_VALUE);
 
-                    if (!ledcWrite(ledPin[index], dutyCycle))
-                        log_w("Error setting duty cycle %i on pin %i", dutyCycle, ledPin[index]);
-                }
+                if (!ledcWrite(ledPin[index], dutyCycle))
+                    log_w("Error setting duty cycle %i on pin %i", dutyCycle, ledPin[index]);
             }
         }
 
-        constexpr const int REFRESHRATE_LCD_HZ = 5;
-        constexpr const int LCD_WAIT_TIME = 1000 / REFRESHRATE_LCD_HZ;
+        constexpr int REFRESHRATE_LCD_HZ = 5;
+        constexpr int LCD_WAIT_TIME = 1000 / REFRESHRATE_LCD_HZ;
         static unsigned long lastLcdRefresh = 0;
         if (millis() - lastLcdRefresh >= LCD_WAIT_TIME)
         {
@@ -112,7 +112,7 @@ void dimmerTask(void *parameter)
             lastLcdRefresh = millis();
         }
 
-        constexpr const int MOON_UPDATE_INTERVAL_SECONDS = 5;
+        constexpr int MOON_UPDATE_INTERVAL_SECONDS = 5;
         static time_t lastMoonUpdate = time(NULL);
         if (time(NULL) - lastMoonUpdate >= MOON_UPDATE_INTERVAL_SECONDS)
         {
