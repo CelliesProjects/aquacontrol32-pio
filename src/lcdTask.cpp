@@ -27,7 +27,7 @@ static void showSystemMessage(char *str)
             log_e("could not create sprite");
             return;
         }
-        sysMess.setPaletteColor(1, 200, 200, 200);
+        sysMess.setPaletteColor(1, 255, 255, 255);
         sysMess.setTextDatum(CC_DATUM);
         sysMess.setTextColor(1, 0);
     }
@@ -56,7 +56,7 @@ static void updateLights()
             log_e("could not create sprite");
             return;
         }
-        lightBars.setPaletteColor(1, 200, 200, 200);
+        lightBars.setPaletteColor(1, 255, 255, 255);
         lightBars.setPaletteColor(2, 10, 10, 200);
         lightBars.setPaletteColor(3, 10, 200, 10);
         lightBars.setTextDatum(CC_DATUM);
@@ -116,7 +116,6 @@ static void updateClock(const struct tm &timeinfo)
 void lcdTask(void *parameter)
 {
     lcd.init();
-    lcd.setBrightness(38);
 
     while (1)
     {
