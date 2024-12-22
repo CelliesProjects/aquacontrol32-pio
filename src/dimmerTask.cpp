@@ -1,6 +1,6 @@
 #include "dimmerTask.hpp"
 
-static unsigned long long msSinceMidnight()
+static unsigned int msSinceMidnight()
 {
     // Time should already be synced through SNTP!
     struct timeval now;
@@ -9,14 +9,13 @@ static unsigned long long msSinceMidnight()
     struct tm currentTime;
     localtime_r(&now.tv_sec, &currentTime);
 
-    int secondsSinceMidnight =
+    unsigned int secondsSinceMidnight =
         currentTime.tm_hour * 3600 +
         currentTime.tm_min * 60 +
         currentTime.tm_sec;
 
-    unsigned long long millisecondsSinceMidnight =
-        (unsigned long long)secondsSinceMidnight * 1000ULL +
-        now.tv_usec / 1000;
+    unsigned int millisecondsSinceMidnight =
+        secondsSinceMidnight * 1000U + now.tv_usec / 1000;
 
     return millisecondsSinceMidnight;
 }
