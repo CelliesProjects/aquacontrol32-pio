@@ -14,6 +14,8 @@ extern QueueHandle_t lcdQueue;
 extern void lcdTask(void *parameter);
 extern void messageOnLcd(const char *str);
 
+extern void sensorTask(void *parameter);
+
 extern void dimmerTask(void *parameter);
 extern std::vector<lightTimer_t> channel[NUMBER_OF_CHANNELS];
 extern std::mutex channelMutex;
@@ -238,6 +240,15 @@ void setup(void)
         while (1)
             delay(100);
     }
+
+    result = xTaskCreate(sensorTask,
+                                    NULL,
+                                    4096,
+                                    NULL,
+                                    tskIDLE_PRIORITY,
+                                    NULL);
+    if (result != pdPASS)
+        log_e("could not start sensorTask. system halted!");
 
     messageOnLcd("Wifi connecting...");
 
