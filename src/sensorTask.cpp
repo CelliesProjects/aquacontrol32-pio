@@ -6,6 +6,9 @@ void sensorTask(void *parameter)
 
     pinMode(ONE_WIRE_BUS, INPUT_PULLUP);
 
+    OneWire oneWire(ONE_WIRE_BUS);
+    DallasTemperature sensor(&oneWire);
+
     sensor.begin();
 
     DeviceAddress sensorAddress;
@@ -17,8 +20,6 @@ void sensorTask(void *parameter)
     }
 
     sensor.setResolution(sensorAddress, 12);
-    log_i("Sensor initialized with 12-bit resolution.");
-
     sensor.requestTemperatures();
 
     while (1)
@@ -35,4 +36,3 @@ void sensorTask(void *parameter)
         sensor.requestTemperatures();
     }
 }
-

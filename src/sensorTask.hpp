@@ -4,10 +4,6 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 
-constexpr int ONE_WIRE_BUS = 35;
-
-// these should become local to the sensortask once we got the code running nicely.
-static OneWire oneWire(ONE_WIRE_BUS);
-static DallasTemperature sensor(&oneWire);
+static constexpr int ONE_WIRE_BUS = 35;
 
 #endif
