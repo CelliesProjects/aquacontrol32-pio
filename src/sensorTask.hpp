@@ -4,6 +4,6 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 
-static constexpr int ONE_WIRE_BUS = 35;
+static constexpr int ONE_WIRE_PIN = 26;
 
 #endif
