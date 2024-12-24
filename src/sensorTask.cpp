@@ -2,55 +2,37 @@
 
 void sensorTask(void *parameter)
 {
-    log_i("Starting DS18B20 sensor reading...");
+    log_i("Searching DS18B20 sensor");
 
-    pinMode(ONE_WIRE_BUS, INPUT_PULLUP); // use internal pullup for when no hw at all is connected to the pin
+    pinMode(ONE_WIRE_BUS, INPUT_PULLUP);
 
-    sensors.begin();
+    sensor.begin();
 
-    const int sensorCount = sensors.getDeviceCount();
-    if (sensorCount == 0)
+    DeviceAddress sensorAddress;
+
+    if (!sensor.getAddress(sensorAddress, 0))
     {
-        log_i("No DS18B20 sensors found. Stopping task.");
+        log_i("No DS18B20 sensor found. Deleting task.");
         vTaskDelete(NULL);
     }
 
-    log_i("Found %d DS18B20 sensors.", sensorCount);
+    sensor.setResolution(sensorAddress, 12);
+    log_i("Sensor initialized with 12-bit resolution.");
 
-    log_i("Setting resolution to 12-bit for all sensors...");
-    for (int i = 0; i < sensorCount; i++)
-    {
-        DeviceAddress address;
-        if (sensors.getAddress(address, i))
-        {
-            sensors.setResolution(address, 12);
-            log_i("Sensor %d resolution set to 12-bit.", i);
-        }
-        else
-            log_i("Sensor %d address not found.", i);
-    }
-
-    sensors.requestTemperatures();
+    sensor.requestTemperatures();
 
     while (1)
     {
         vTaskDelay(pdMS_TO_TICKS(750));
 
-        for (int i = 0; i < sensorCount; i++)
-        {
-            DeviceAddress address;
-            if (sensors.getAddress(address, i))
-            {
-                float temperatureC = sensors.getTempC(address);
-                if (temperatureC != DEVICE_DISCONNECTED_C)
-                    log_i("Sensor %d: %.2f°C", i, temperatureC);
-                else
-                    log_i("Sensor %d: Disconnected or error reading temperature.", i);
-            }
-            else
-                log_i("Sensor %d: Address not found.", i);
-        }
+        float temperatureC = sensor.getTempC(sensorAddress);
 
-        sensors.requestTemperatures();
+        if (temperatureC != DEVICE_DISCONNECTED_C)
+            log_i("Temperature: %.2f°C", temperatureC);
+        else
+            log_i("Sensor disconnected or error reading temperature.");
+
+        sensor.requestTemperatures();
     }
 }
+
