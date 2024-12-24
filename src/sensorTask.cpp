@@ -6,9 +6,11 @@ void sensorTask(void *parameter)
 
     OneWire oneWire(ONE_WIRE_PIN);
     DallasTemperature sensor(&oneWire);
-    DeviceAddress sensorAddress;
 
     sensor.begin();
+    
+    DeviceAddress sensorAddress;
+
     if (!sensor.getAddress(sensorAddress, 0))
     {
         log_d("No DS18B20 sensor found. Deleting task.");
