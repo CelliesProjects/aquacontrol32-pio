@@ -48,6 +48,7 @@ static void ntpCb(void *cb_arg)
     sntp_set_time_sync_notification_cb(NULL);
     startDimmerTask();
 }
+
 static void parseTimerFile(File &file)
 {
     log_i("parsing '%s'", file.path());
@@ -242,13 +243,17 @@ void setup(void)
     }
 
     result = xTaskCreate(sensorTask,
-                                    NULL,
-                                    4096,
-                                    NULL,
-                                    tskIDLE_PRIORITY,
-                                    NULL);
+                         NULL,
+                         4096,
+                         NULL,
+                         tskIDLE_PRIORITY,
+                         NULL);
     if (result != pdPASS)
+    {
         log_e("could not start sensorTask. system halted!");
+        while (1)
+            delay(100);
+    }
 
     messageOnLcd("Wifi connecting...");
 

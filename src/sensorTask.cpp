@@ -2,20 +2,16 @@
 
 void sensorTask(void *parameter)
 {
-    log_i("Searching DS18B20 sensor");
+    pinMode(ONE_WIRE_PIN, INPUT_PULLUP);
 
-    pinMode(ONE_WIRE_BUS, INPUT_PULLUP);
-
-    OneWire oneWire(ONE_WIRE_BUS);
+    OneWire oneWire(ONE_WIRE_PIN);
     DallasTemperature sensor(&oneWire);
-
-    sensor.begin();
-
     DeviceAddress sensorAddress;
 
+    sensor.begin();
     if (!sensor.getAddress(sensorAddress, 0))
     {
-        log_i("No DS18B20 sensor found. Deleting task.");
+        log_d("No DS18B20 sensor found. Deleting task.");
         vTaskDelete(NULL);
     }
 
@@ -26,7 +22,7 @@ void sensorTask(void *parameter)
     {
         vTaskDelay(pdMS_TO_TICKS(750));
 
-        float temperatureC = sensor.getTempC(sensorAddress);
+        const float temperatureC = sensor.getTempC(sensorAddress);
 
         if (temperatureC != DEVICE_DISCONNECTED_C)
             log_i("Temperature: %.2f°C", temperatureC);
