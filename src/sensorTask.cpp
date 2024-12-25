@@ -31,7 +31,7 @@ void sensorTask(void *parameter)
 
         if (temperatureC == DEVICE_DISCONNECTED_C)
         {
-            log_i("Sensor disconnected or error reading temperature.");
+            log_w("Sensor disconnected or error reading temperature.");
             if (++errorCount >= 10)
             {
                 log_e("Persistent sensor error after 10 retries. Deleting task.");
@@ -50,7 +50,7 @@ void sensorTask(void *parameter)
 
                 const BaseType_t result = xQueueSend(lcdQueue, &msg, 0);
 
-                log_i("%s lcd temperature %.2f°C", result ? "Updated" : "Could not update", temperatureC);
+                log_d("%s lcd temperature %.2f°C", result ? "Updated" : "Could not update", temperatureC);
                 lastTemperatureC = result ? temperatureC : lastTemperatureC;
             }
         }
