@@ -32,7 +32,7 @@ static void startDimmerTask()
                                         NULL,
                                         4096 * 2,
                                         NULL,
-                                        tskIDLE_PRIORITY + 2,
+                                        tskIDLE_PRIORITY + 5,
                                         &dimmerTaskHandle);
     if (taskResult != pdPASS)
     {
@@ -233,7 +233,7 @@ void setup(void)
                                     NULL,
                                     4096,
                                     NULL,
-                                    tskIDLE_PRIORITY,
+                                    tskIDLE_PRIORITY + 1,
                                     NULL);
     if (result != pdPASS)
     {
@@ -246,7 +246,7 @@ void setup(void)
                          NULL,
                          4096,
                          NULL,
-                         tskIDLE_PRIORITY,
+                         tskIDLE_PRIORITY + 1,
                          NULL);
     if (result != pdPASS)
     {
