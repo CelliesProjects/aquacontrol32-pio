@@ -115,7 +115,7 @@ static void updateClock(const struct tm &timeinfo)
 
 static void showTemp(const float temperature)
 {
-    const GFXfont &font = lgfx::fonts::DejaVu24;
+    const GFXfont &font = DejaVu24Modded;
     static LGFX_Sprite temp(&lcd);
     if (temp.width() == 0 || temp.height() == 0)
     {
@@ -129,7 +129,7 @@ static void showTemp(const float temperature)
     char buffer[10];
     snprintf(buffer, sizeof(buffer), "%.2f°C", temperature);
     temp.drawCenterString(buffer, temp.width() >> 1, 6, &font);
-    temp.pushSprite(0, 20);
+    temp.pushSprite(0, 15);
 
 }
 

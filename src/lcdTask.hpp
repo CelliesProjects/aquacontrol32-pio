@@ -5,6 +5,7 @@
 #include <LGFX_AUTODETECT.hpp>
 
 #include "lcdMessage_t.h"
+#include "fonts/DejaVu24-modded.h" /* contains percent sign and superscript 2*/
 
 extern float currentPercentage[NUMBER_OF_CHANNELS];
 
