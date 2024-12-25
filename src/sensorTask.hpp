@@ -6,7 +6,7 @@
 
 #include "lcdMessage_t.h"
 
-#define TEMPERATURE_THRESHOLD (0.1f)
+#define TEMPERATURE_THRESHOLD (0.05f)
 
 extern QueueHandle_t lcdQueue;
 
