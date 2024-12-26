@@ -26,7 +26,7 @@ void sensorTask(void *parameter)
     DeviceAddress sensorAddress;
     if (!sensor.getAddress(sensorAddress, 0))
     {
-        log_d("No DS18B20 sensor found. Deleting task.");
+        log_i("No DS18B20 sensor found. Deleting task.");
         vTaskDelete(NULL);
     }
     sensor.setResolution(sensorAddress, 12);
