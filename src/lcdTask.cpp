@@ -1,5 +1,5 @@
 #include "lcdTask.hpp"
-#include "lcdMessage_t.h"
+#include "lcdMessage.h"
 
 float mapf(const float x, const float in_min, const float in_max, const float out_min, const float out_max)
 {

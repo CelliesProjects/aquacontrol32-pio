@@ -7,8 +7,8 @@
 #include <mutex>
 
 #include "secrets.h"
-#include "lcdMessage_t.h"
-#include "lightTime_t.h"
+#include "lcdMessage.h"
+#include "lightTimer.h"
 
 extern QueueHandle_t lcdQueue;
 extern void lcdTask(void *parameter);

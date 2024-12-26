@@ -4,12 +4,12 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 
-#include "lcdMessage_t.h"
-
-#define TEMPERATURE_THRESHOLD (0.05f)
-
-extern QueueHandle_t lcdQueue;
+#include "lcdMessage.h"
 
 static constexpr int ONE_WIRE_PIN = 26;
+static constexpr float TEMPERATURE_THRESHOLD = (0.05f);
+static constexpr int MAX_ERROR_COUNT = 10;
+
+extern QueueHandle_t lcdQueue;
 
 #endif
