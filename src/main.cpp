@@ -195,7 +195,7 @@ void setup(void)
     SPI.begin(SCK, MISO, MOSI);
     SPI.setHwCs(true);
 
-    if (!SD.begin(SDCARD_SS))
+    if (!SD.begin(SS))
         log_w("could not mount SD");
     else
     {
