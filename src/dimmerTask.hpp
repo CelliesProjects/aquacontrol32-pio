@@ -8,8 +8,8 @@
 #include <mutex>
 #include <moonPhase.h>
 
-#include "lightTime_t.h"
-#include "lcdMessage_t.h"
+#include "lightTimer.h"
+#include "lcdMessage.h"
 
 extern float mapf(const float x, const float in_min, const float in_max, const float out_min, const float out_max);
 

@@ -1,5 +1,4 @@
 #include "lcdTask.hpp"
-#include "lcdMessage_t.h"
 
 float mapf(const float x, const float in_min, const float in_max, const float out_min, const float out_max)
 {
@@ -113,6 +112,26 @@ static void updateClock(const struct tm &timeinfo)
     clock.pushSprite(0, lcd.height() - font.yAdvance);
 }
 
+static void showTemp(const float temperature)
+{
+    const GFXfont &font = DejaVu24Modded;
+    static LGFX_Sprite temp(&lcd);
+    if (temp.width() == 0 || temp.height() == 0)
+    {
+        temp.setColorDepth(lgfx::palette_2bit);
+        if (!temp.createSprite(lcd.width(), font.yAdvance))
+        {
+            log_e("could not create sprite");
+            return;
+        }
+    }    
+    char buffer[10];
+    snprintf(buffer, sizeof(buffer), "%.2f°C", temperature);
+    temp.drawCenterString(buffer, temp.width() >> 1, 6, &font);
+    temp.pushSprite(0, 15);
+
+}
+
 void lcdTask(void *parameter)
 {
     lcd.init();
@@ -138,6 +157,10 @@ void lcdTask(void *parameter)
 
             case lcdMessageType::MOON_PHASE:
                 showMoon(msg.float1, msg.int1);
+                break;
+
+            case lcdMessageType::TEMPERATURE:
+                showTemp(msg.float1);
                 break;
 
             default:

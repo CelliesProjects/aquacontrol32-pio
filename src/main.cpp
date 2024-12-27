@@ -7,12 +7,14 @@
 #include <mutex>
 
 #include "secrets.h"
-#include "lcdMessage_t.h"
-#include "lightTime_t.h"
+#include "lcdMessage.h"
+#include "lightTimer.h"
 
 extern QueueHandle_t lcdQueue;
 extern void lcdTask(void *parameter);
 extern void messageOnLcd(const char *str);
+
+extern void sensorTask(void *parameter);
 
 extern void dimmerTask(void *parameter);
 extern std::vector<lightTimer_t> channel[NUMBER_OF_CHANNELS];
@@ -30,7 +32,7 @@ static void startDimmerTask()
                                         NULL,
                                         4096 * 2,
                                         NULL,
-                                        tskIDLE_PRIORITY + 2,
+                                        tskIDLE_PRIORITY + 5,
                                         &dimmerTaskHandle);
     if (taskResult != pdPASS)
     {
@@ -46,6 +48,7 @@ static void ntpCb(void *cb_arg)
     sntp_set_time_sync_notification_cb(NULL);
     startDimmerTask();
 }
+
 static void parseTimerFile(File &file)
 {
     log_i("parsing '%s'", file.path());
@@ -192,7 +195,7 @@ void setup(void)
     SPI.begin(SCK, MISO, MOSI);
     SPI.setHwCs(true);
 
-    if (!SD.begin(SDCARD_SS))
+    if (!SD.begin(SS))
         log_w("could not mount SD");
     else
     {
@@ -230,11 +233,24 @@ void setup(void)
                                     NULL,
                                     4096,
                                     NULL,
-                                    tskIDLE_PRIORITY,
+                                    tskIDLE_PRIORITY + 1,
                                     NULL);
     if (result != pdPASS)
     {
         log_e("could not start lcdTask. system halted!");
+        while (1)
+            delay(100);
+    }
+
+    result = xTaskCreate(sensorTask,
+                         NULL,
+                         4096,
+                         NULL,
+                         tskIDLE_PRIORITY + 1,
+                         NULL);
+    if (result != pdPASS)
+    {
+        log_e("could not start sensorTask. system halted!");
         while (1)
             delay(100);
     }
