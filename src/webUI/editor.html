@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AquaControl V2 - Editable Timeline</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        canvas {
+            border: 1px solid #ccc;
+            margin-top: 20px;
+            width: 90%;
+            height: 400px;
+            max-width: 1200px;
+        }
+        #contextMenu {
+            position: absolute;
+            display: none;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            padding: 8px;
+            z-index: 1000;
+        }
+        #contextMenu button {
+            display: block;
+            width: 100%;
+            border: none;
+            background: none;
+            text-align: left;
+            padding: 8px;
+            cursor: pointer;
+        }
+        #contextMenu button:hover {
+            background-color: #f0f0f0;
+        }
+        #tooltip {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 5px;
+            border-radius: 5px;
+            font-size: 12px;
+            display: none; /* Hidden by default */
+        }
+    </style>
+</head>
+<body>
+    <h1>AquaControl V2 - Editable Timeline</h1>
+    <canvas id="timelineCanvas"></canvas>
+    <div id="contextMenu">
+        <button id="deletePoint">Delete Timer</button>
+    </div>
+    <div id="tooltip"></div>
+    <script>
+        (function () {
+            const canvas = document.getElementById('timelineCanvas');
+            const ctx = canvas.getContext('2d');
+            const contextMenu = document.getElementById('contextMenu');
+            const deletePointButton = document.getElementById('deletePoint');
+            const tooltip = document.getElementById('tooltip');
+            const channelTimers = [
+                { time: 0, intensity: 0 },    // First timer (editable: intensity only)
+                { time: 36000, intensity: 0 },
+                { time: 39600, intensity: 100 },
+                { time: 64800, intensity: 100 },
+                { time: 68400, intensity: 0 },
+                { time: 86400, intensity: 0 } // Last timer (mirrored)
+            ];
+
+            let draggingPoint = null;
+            let rightClickedPoint = null;
+            const pointRadius = 8; // Increased radius for easier clicks
+
+            const resizeCanvas = () => {
+                const rect = canvas.getBoundingClientRect();
+                canvas.width = rect.width;
+                canvas.height = rect.height; // Fixed height from CSS
+                drawTimeline();
+            };
+
+            const timeToX = time => (time / 86400) * canvas.width;
+            const intensityToY = intensity => canvas.height - (intensity / 100) * canvas.height;
+            const xToTime = x => Math.round((x / canvas.width) * 86400 / 60) * 60; // Snap to minutes
+            const yToIntensity = y => Math.round(100 - (y / canvas.height) * 100);
+
+            const formatTime = time => {
+                const hours = Math.floor(time / 3600);
+                const minutes = Math.floor((time % 3600) / 60);
+                return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+            };
+
+            const drawTimeline = () => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                const width = canvas.width;
+                const height = canvas.height;
+
+                // Draw background grid
+                ctx.strokeStyle = '#ddd';
+                ctx.lineWidth = 1;
+                for (let i = 0; i <= 24; i++) {
+                    const x = (i / 24) * width;
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, height);
+                    ctx.stroke();
+                    ctx.fillText(`${i}:00`, x + 2, height - 5);
+                }
+
+                // Draw timeline
+                ctx.strokeStyle = '#0077cc';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                channelTimers.forEach((timer, index) => {
+                    const x = timeToX(timer.time);
+                    const y = intensityToY(timer.intensity);
+                    if (index === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                });
+                ctx.stroke();
+
+                // Draw points
+                ctx.fillStyle = '#0077cc';
+                channelTimers.forEach((timer, index) => {
+                    if (index === channelTimers.length - 1) return; // Skip the last (mirrored) timer
+                    const x = timeToX(timer.time);
+                    const y = intensityToY(timer.intensity);
+                    ctx.beginPath();
+                    ctx.arc(x, y, pointRadius, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            };
+
+            const findPointAt = (x, y) => {
+                return channelTimers.find((timer, index) => {
+                    if (index === channelTimers.length - 1) return false; // Skip the last (mirrored) timer
+                    const timerX = timeToX(timer.time);
+                    const timerY = intensityToY(timer.intensity);
+                    return Math.hypot(timerX - x, timerY - y) < pointRadius;
+                });
+            };
+
+            const addTimer = (x, y) => {
+                const time = xToTime(x);
+                const intensity = yToIntensity(y);
+                if (time <= 60 || time >= 86400 - 60) return; // Prevent adding too close to bounds
+                channelTimers.push({ time, intensity });
+                channelTimers.sort((a, b) => a.time - b.time); // Keep timers ordered
+                drawTimeline();
+            };
+
+            const startDragging = (x, y) => {
+                draggingPoint = findPointAt(x, y);
+            };
+
+            const dragPoint = (x, y) => {
+                if (draggingPoint) {
+                    if (draggingPoint.time === 0) {
+                        // First timer: Only allow intensity change
+                        const newIntensity = Math.max(0, Math.min(100, yToIntensity(y)));
+                        draggingPoint.intensity = newIntensity;
+                        channelTimers[channelTimers.length - 1].intensity = newIntensity; // Update last timer
+                    } else {
+                        // Other timers: Allow full drag
+                        const newTime = Math.max(60, Math.min(86400 - 60, xToTime(x)));
+                        const newIntensity = Math.max(0, Math.min(100, yToIntensity(y)));
+                        draggingPoint.time = newTime;
+                        draggingPoint.intensity = newIntensity;
+                        channelTimers.sort((a, b) => a.time - b.time); // Keep timers ordered
+                    }
+                    drawTimeline();
+                }
+            };
+
+            const stopDragging = () => {
+                draggingPoint = null;
+                tooltip.style.display = 'none'; // Hide tooltip after dragging
+            };
+
+            const showContextMenu = (x, y) => {
+                contextMenu.style.left = `${x}px`;
+                contextMenu.style.top = `${y}px`;
+                contextMenu.style.display = 'block';
+            };
+
+            const hideContextMenu = () => {
+                contextMenu.style.display = 'none';
+            };
+
+            const updateTooltip = (x, y) => {
+                const time = xToTime(x);
+                const intensity = yToIntensity(y);
+                tooltip.textContent = `Time: ${formatTime(time)} | Intensity: ${intensity}%`;
+                tooltip.style.display = 'block';
+            };
+
+            canvas.addEventListener('mousedown', (event) => {
+                if (event.button === 2) return; // Right-click, skip default behavior
+                const rect = canvas.getBoundingClientRect();
+                const x = event.clientX - rect.left;
+                const y = event.clientY - rect.top;
+
+                if (findPointAt(x, y)) {
+                    startDragging(x, y);
+                } else {
+                    addTimer(x, y);
+                    updateTooltip(x, y); // Show tooltip when adding a timer
+                }
+            });
+
+            canvas.addEventListener('mousemove', (event) => {
+                const rect = canvas.getBoundingClientRect();
+                const x = event.clientX - rect.left;
+                const y = event.clientY - rect.top;
+
+                if (draggingPoint) {
+                    dragPoint(x, y);
+                }
+
+                if (draggingPoint || findPointAt(x, y)) {
+                    updateTooltip(x, y); // Show tooltip while dragging or hovering a point
+                }
+            });
+
+            canvas.addEventListener('mouseup', stopDragging);
+
+            canvas.addEventListener('contextmenu', (event) => {
+                event.preventDefault();
+                const rect = canvas.getBoundingClientRect();
+                const x = event.clientX - rect.left;
+                const y = event.clientY - rect.top;
+                rightClickedPoint = findPointAt(x, y);
+                if (rightClickedPoint) {
+                    showContextMenu(event.clientX, event.clientY);
+                }
+            });
+
+            deletePointButton.addEventListener('click', () => {
+            if (rightClickedPoint) {
+                // Check if it's the first timer (00:00)
+                if (rightClickedPoint.time === 0) {
+                    alert("The first timer cannot be deleted.");
+                } else {
+                    const index = channelTimers.indexOf(rightClickedPoint);
+                    if (index !== -1) {
+                        channelTimers.splice(index, 1);
+                        drawTimeline();
+                    }
+                }
+            }
+            hideContextMenu();
+        });
+
+            document.addEventListener('click', (event) => {
+                if (event.target !== contextMenu && !contextMenu.contains(event.target)) {
+                    hideContextMenu();
+                }
+            });
+
+            window.addEventListener('resize', resizeCanvas);
+
+            resizeCanvas();
+        })();
+    </script>
+</body>
+</html>
