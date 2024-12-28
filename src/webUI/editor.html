@@ -127,14 +127,25 @@
                 // Draw background grid
                 ctx.strokeStyle = '#ddd';
                 ctx.lineWidth = 1;
-                for (let i = 0; i <= 24; i++) {
-                    const x = (i / 24) * width;
+
+                // Calculate the vertical position for the labels (centered between 0% and 10%)
+                const labelY = intensityToY(5); // Midway between 0% and 10% intensity
+
+                for (let i = 1; i < 24; i++) { // Exclude 0:00 and 24:00
+                    const x = (i / 24) * width; // X position for the hour line
                     ctx.beginPath();
                     ctx.moveTo(x, 0);
                     ctx.lineTo(x, height);
                     ctx.stroke();
-                    ctx.fillText(`${i}:00`, x + 2, height - 5);
+
+                    // Draw the hour labels centered on the grid lines
+                    const labelText = `${i}:00`;
+                    ctx.font = '12px Arial';
+                    const textWidth = ctx.measureText(labelText).width; // Calculate the width of the text
+                    ctx.fillStyle = '#000'; // Black color for the text
+                    ctx.fillText(labelText, x - textWidth / 2, labelY); // Center the text horizontally and position vertically
                 }
+
 
                 // Draw intensity grid lines (horizontal)
                 const intensityGridStep = 10;
@@ -157,9 +168,12 @@
                     { start: 82800, end: 86400 } // Between 23:00 and 24:00
                 ];
 
-                // Set font and calculate font height
-                ctx.font = '12px Arial';
-                const fontHeight = parseInt(ctx.font, 10); // Extract the font size (12px in this case)
+                // Define font size explicitly
+                const fontSize = 12; // Set font size in pixels
+                ctx.font = `${fontSize}px Arial`;
+
+                // Use the defined font size as the height
+                const fontHeight = fontSize;
 
                 percentages.forEach((percentage) => {
                     times.forEach((timeRange) => {
