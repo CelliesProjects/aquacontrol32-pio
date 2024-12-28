@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,6 +15,7 @@
             align-items: center;
             justify-content: center;
         }
+
         canvas {
             border: 1px solid #ccc;
             margin-top: 20px;
@@ -21,6 +23,7 @@
             height: 400px;
             max-width: 1200px;
         }
+
         #contextMenu {
             position: absolute;
             display: none;
@@ -30,6 +33,7 @@
             padding: 8px;
             z-index: 1000;
         }
+
         #contextMenu button {
             display: block;
             width: 100%;
@@ -39,9 +43,11 @@
             padding: 8px;
             cursor: pointer;
         }
+
         #contextMenu button:hover {
             background-color: #f0f0f0;
         }
+
         #tooltip {
             position: absolute;
             top: 10px;
@@ -51,10 +57,12 @@
             padding: 5px;
             border-radius: 5px;
             font-size: 12px;
-            display: none; /* Hidden by default */
+            display: none;
+            /* Hidden by default */
         }
     </style>
 </head>
+
 <body>
     <h1>AquaControl V2 - Editable Timeline</h1>
     <canvas id="timelineCanvas"></canvas>
@@ -89,10 +97,21 @@
                 drawTimeline();
             };
 
+            // Buffer area height (top and bottom)
+            const bufferHeight = 20;
+
             const timeToX = time => (time / 86400) * canvas.width;
-            const intensityToY = intensity => canvas.height - (intensity / 100) * canvas.height;
+            const intensityToY = intensity => {
+                if (intensity === 0) return canvas.height - bufferHeight; // Map 0% to bottom buffer area
+                if (intensity === 100) return bufferHeight; // Map 100% to top buffer area
+                return canvas.height - (intensity / 100) * (canvas.height - 2 * bufferHeight) - bufferHeight;
+            };
             const xToTime = x => Math.round((x / canvas.width) * 86400 / 60) * 60; // Snap to minutes
-            const yToIntensity = y => Math.round(100 - (y / canvas.height) * 100);
+            const yToIntensity = y => {
+                if (y <= bufferHeight) return 100; // Top buffer area (100%)
+                if (y >= canvas.height - bufferHeight) return 0; // Bottom buffer area (0%)
+                return Math.round(100 - ((y - bufferHeight) / (canvas.height - 2 * bufferHeight)) * 100);
+            };
 
             const formatTime = time => {
                 const hours = Math.floor(time / 3600);
@@ -116,6 +135,30 @@
                     ctx.stroke();
                     ctx.fillText(`${i}:00`, x + 2, height - 5);
                 }
+
+                // Draw intensity grid lines (horizontal)
+                const intensityGridStep = 10;
+                for (let i = 0; i <= 100; i += intensityGridStep) {
+                    const y = intensityToY(i);
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(width, y);
+                    ctx.strokeStyle = '#ddd'; // Light gray color for grid lines
+                    ctx.stroke();
+                }
+
+                // Draw percentage values for specific times (1:00, 12:00, 23:00)
+                const times = [3600, 43200, 82800]; // 1:00, 12:00, 23:00 in seconds since midnight
+                const percentages = [0, 50, 100]; // Corresponding intensity percentages for these times
+
+                times.forEach((time, index) => {
+                    const x = timeToX(time); // Calculate x position based on the time
+                    const y = intensityToY(percentages[index]); // Calculate y position based on the intensity percentage
+                    ctx.fillStyle = '#000'; // Black color for text
+                    ctx.font = '12px Arial';
+                    ctx.fillText(`${percentages[index]}%`, x + 5, y + 4); // Display percentage text next to the grid line
+                });
+
 
                 // Draw timeline
                 ctx.strokeStyle = '#0077cc';
@@ -249,20 +292,20 @@
             });
 
             deletePointButton.addEventListener('click', () => {
-            if (rightClickedPoint) {
-                // Check if it's the first timer (00:00)
-                if (rightClickedPoint.time === 0) {
-                    alert("The first timer cannot be deleted.");
-                } else {
-                    const index = channelTimers.indexOf(rightClickedPoint);
-                    if (index !== -1) {
-                        channelTimers.splice(index, 1);
-                        drawTimeline();
+                if (rightClickedPoint) {
+                    // Check if it's the first timer (00:00)
+                    if (rightClickedPoint.time === 0) {
+                        alert("The first timer cannot be deleted.");
+                    } else {
+                        const index = channelTimers.indexOf(rightClickedPoint);
+                        if (index !== -1) {
+                            channelTimers.splice(index, 1);
+                            drawTimeline();
+                        }
                     }
                 }
-            }
-            hideContextMenu();
-        });
+                hideContextMenu();
+            });
 
             document.addEventListener('click', (event) => {
                 if (event.target !== contextMenu && !contextMenu.contains(event.target)) {
@@ -276,4 +319,5 @@
         })();
     </script>
 </body>
+
 </html>
