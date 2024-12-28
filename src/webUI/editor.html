@@ -147,18 +147,40 @@
                     ctx.stroke();
                 }
 
-                // Draw percentage values for specific times (1:00, 12:00, 23:00)
-                const times = [3600, 43200, 82800]; // 1:00, 12:00, 23:00 in seconds since midnight
-                const percentages = [0, 50, 100]; // Corresponding intensity percentages for these times
+                // Draw percentage values for 0%, 50%, 100% at three times (0:00-1:00, 12:00, 23:00-24:00)
+                const percentages = [0, 50, 100]; // The percentage values
 
-                times.forEach((time, index) => {
-                    const x = timeToX(time); // Calculate x position based on the time
-                    const y = intensityToY(percentages[index]); // Calculate y position based on the intensity percentage
-                    ctx.fillStyle = '#000'; // Black color for text
-                    ctx.font = '12px Arial';
-                    ctx.fillText(`${percentages[index]}%`, x + 5, y + 4); // Display percentage text next to the grid line
+                // Define the time positions where we want the percentages
+                const times = [
+                    { start: 0, end: 3600 },    // Between 0:00 and 1:00
+                    { start: 43200, end: 43200 }, // At 12:00 (centered)
+                    { start: 82800, end: 86400 } // Between 23:00 and 24:00
+                ];
+
+                // Set font and calculate font height
+                ctx.font = '12px Arial';
+                const fontHeight = parseInt(ctx.font, 10); // Extract the font size (12px in this case)
+
+                percentages.forEach((percentage) => {
+                    times.forEach((timeRange) => {
+                        let x;
+                        if (timeRange.start === timeRange.end) {
+                            // For single times like 12:00, directly use the exact position
+                            x = timeToX(timeRange.start);
+                        } else {
+                            // For ranges (e.g., 0:00-1:00, 23:00-24:00), find the center
+                            x = timeToX(timeRange.start + (timeRange.end - timeRange.start) / 2);
+                        }
+
+                        const y = intensityToY(percentage); // Calculate y position based on the intensity percentage
+                        const text = `${percentage}%`;
+                        const textWidth = ctx.measureText(text).width;
+
+                        // Center text horizontally and vertically on the line
+                        ctx.fillStyle = '#000'; // Black color for text
+                        ctx.fillText(text, x - textWidth / 2, y + fontHeight / 2); // Center horizontally and vertically
+                    });
                 });
-
 
                 // Draw timeline
                 ctx.strokeStyle = '#0077cc';
