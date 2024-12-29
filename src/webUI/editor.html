@@ -237,7 +237,14 @@
             const addTimer = (x, y) => {
                 const time = xToTime(x);
                 const intensity = yToIntensity(y);
+
                 if (time <= 60 || time >= 86400 - 60) return; // Prevent adding too close to bounds
+
+                // Check for duplicate times
+                if (channelTimers.some(timer => timer.time === time)) {
+                    alert(`A timer already exists at ${formatTime(time)}. Please choose a different time.`);
+                    return; // Prevent adding a duplicate timer
+                }
 
                 const newTimer = { time, intensity }; // Create the new timer
                 channelTimers.push(newTimer);
@@ -247,6 +254,7 @@
                 drawTimeline(); // Redraw the timeline to reflect the new point
             };
 
+
             const startDragging = (x, y) => {
                 draggingPoint = findPointAt(x, y);
             };
@@ -254,12 +262,12 @@
             const dragPoint = (x, y) => {
                 if (draggingPoint) {
                     if (draggingPoint.time === 0) {
-                        // First timer: Only allow intensity change
+                        // First timer: Only allow intensity change, but prevent time change
                         const newIntensity = Math.max(0, Math.min(100, yToIntensity(y)));
                         draggingPoint.intensity = newIntensity;
-                        channelTimers[channelTimers.length - 1].intensity = newIntensity; // Update last timer
+                        channelTimers[channelTimers.length - 1].intensity = newIntensity; // Update last timer to match first timer's intensity
                     } else {
-                        // Other timers: Allow full drag
+                        // Other timers: Allow full drag (time and intensity)
                         const newTime = Math.max(60, Math.min(86400 - 60, xToTime(x)));
                         const newIntensity = Math.max(0, Math.min(100, yToIntensity(y)));
                         draggingPoint.time = newTime;
@@ -276,20 +284,64 @@
             };
 
             const showContextMenu = (x, y) => {
+                const time = formatTime(rightClickedPoint.time); // Get the time of the right-clicked timer
+
+                // Only allow deletion if it's not the first timer
+                const deleteButton = (rightClickedPoint.time === 0)
+                    ? `<button id="cancelPoint">Cancel</button>`
+                    : `<button id="deletePoint">Delete Timer at ${time}</button>`;
+
+                contextMenu.innerHTML = `${deleteButton}<button id="cancelPoint">Cancel</button>`;
                 contextMenu.style.left = `${x}px`;
                 contextMenu.style.top = `${y}px`;
                 contextMenu.style.display = 'block';
             };
+
+            // Handle the "Delete Timer" option
+            contextMenu.addEventListener('click', (event) => {
+                if (event.target.id === 'deletePoint') {
+                    if (rightClickedPoint) {
+                        // Delete the timer and update the timeline
+                        const index = channelTimers.indexOf(rightClickedPoint);
+                        if (index !== -1) {
+                            channelTimers.splice(index, 1);
+                            drawTimeline(); // Redraw the timeline after deletion
+                        }
+                    }
+                    hideContextMenu();
+                } else if (event.target.id === 'cancelPoint') {
+                    hideContextMenu(); // Close the menu if "Cancel" is clicked
+                }
+            });
+
+
+            // The delete functionality for the context menu
+            contextMenu.addEventListener('click', (event) => {
+                if (event.target.id === 'deletePoint') {
+                    if (rightClickedPoint) {
+                        // Delete the timer and update the timeline
+                        const index = channelTimers.indexOf(rightClickedPoint);
+                        if (index !== -1) {
+                            channelTimers.splice(index, 1);
+                            drawTimeline(); // Redraw the timeline after deletion
+                        }
+                    }
+                    hideContextMenu();
+                } else if (event.target.id === 'cancelPoint') {
+                    hideContextMenu(); // Close the menu if "Cancel" is clicked
+                }
+            });
+
 
             const hideContextMenu = () => {
                 contextMenu.style.display = 'none';
             };
 
             const updateTooltip = (x, y) => {
-                const time = xToTime(x);
-                const intensity = yToIntensity(y);
-                tooltip.textContent = `Time: ${formatTime(time)} | Intensity: ${intensity}%`;
-                tooltip.style.display = 'block';
+                const time = xToTime(x); // Convert x-coordinate to time
+                const intensity = yToIntensity(y); // Convert y-coordinate to intensity
+                tooltip.textContent = `Time: ${formatTime(time)} | Intensity: ${intensity}%`; // Format and display time and intensity
+                tooltip.style.display = 'block'; // Ensure tooltip is visible
 
                 // Get the canvas position relative to the viewport
                 const rect = canvas.getBoundingClientRect();
@@ -298,6 +350,7 @@
                 tooltip.style.left = `${rect.left + x + 10}px`; // Adjust with offset as needed
                 tooltip.style.top = `${rect.top + y + 10}px`;   // Adjust with offset as needed
             };
+
 
             canvas.addEventListener('mousedown', (event) => {
                 if (event.button === 2) return; // Right-click, skip default behavior
@@ -318,14 +371,20 @@
                 const x = event.clientX - rect.left;
                 const y = event.clientY - rect.top;
 
+                // Update tooltip position based on mouse movement
+                tooltip.style.left = `${event.clientX + 10}px`;  // 10px offset for spacing
+                tooltip.style.top = `${event.clientY + 10}px`;   // 10px offset for spacing
+
+                // Update tooltip content and visibility
+                updateTooltip(x, y); // Always update the tooltip
+
+                // If dragging, update the dragged point
                 if (draggingPoint) {
                     dragPoint(x, y);
                 }
-
-                if (draggingPoint || findPointAt(x, y)) {
-                    updateTooltip(x, y); // Show tooltip while dragging or hovering a point
-                }
             });
+
+
 
             canvas.addEventListener('mouseup', stopDragging);
 
@@ -362,10 +421,12 @@
                 const x = event.clientX - rect.left;
                 const y = event.clientY - rect.top;
                 rightClickedPoint = findPointAt(x, y);
-                if (rightClickedPoint) {
+
+                if (rightClickedPoint && rightClickedPoint.time !== 0) { // Don't show context menu for first timer
                     showContextMenu(event.clientX, event.clientY);
                 }
             });
+
 
             deletePointButton.addEventListener('click', () => {
                 if (rightClickedPoint) {
@@ -373,15 +434,22 @@
                     if (rightClickedPoint.time === 0) {
                         alert("The first timer cannot be deleted.");
                     } else {
+                        const timerTime = formatTime(rightClickedPoint.time); // Format the time to HH:MM
+                        // Show the time of the deleted timer in the tooltip
+                        tooltip.textContent = `Deleted Timer at ${timerTime}`;
+                        tooltip.style.display = 'block';
+
                         const index = channelTimers.indexOf(rightClickedPoint);
                         if (index !== -1) {
-                            channelTimers.splice(index, 1);
-                            drawTimeline();
+                            channelTimers.splice(index, 1); // Remove the timer from the array
+                            drawTimeline(); // Redraw the timeline after deletion
                         }
                     }
                 }
                 hideContextMenu();
             });
+
+
 
             document.addEventListener('click', (event) => {
                 if (event.target !== contextMenu && !contextMenu.contains(event.target)) {
