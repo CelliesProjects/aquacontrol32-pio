@@ -50,8 +50,6 @@
 
         #tooltip {
             position: absolute;
-            top: 10px;
-            left: 10px;
             background-color: rgba(0, 0, 0, 0.7);
             color: white;
             padding: 5px;
@@ -59,6 +57,10 @@
             font-size: 12px;
             display: none;
             /* Hidden by default */
+            pointer-events: none;
+            /* Prevent interaction with the tooltip */
+            transition: opacity 0.2s ease-in-out;
+            /* Smooth fade-in and fade-out */
         }
     </style>
 </head>
@@ -236,9 +238,13 @@
                 const time = xToTime(x);
                 const intensity = yToIntensity(y);
                 if (time <= 60 || time >= 86400 - 60) return; // Prevent adding too close to bounds
-                channelTimers.push({ time, intensity });
+
+                const newTimer = { time, intensity }; // Create the new timer
+                channelTimers.push(newTimer);
                 channelTimers.sort((a, b) => a.time - b.time); // Keep timers ordered
-                drawTimeline();
+
+                draggingPoint = newTimer; // Immediately set the new timer as the dragging point
+                drawTimeline(); // Redraw the timeline to reflect the new point
             };
 
             const startDragging = (x, y) => {
@@ -284,6 +290,13 @@
                 const intensity = yToIntensity(y);
                 tooltip.textContent = `Time: ${formatTime(time)} | Intensity: ${intensity}%`;
                 tooltip.style.display = 'block';
+
+                // Get the canvas position relative to the viewport
+                const rect = canvas.getBoundingClientRect();
+
+                // Position the tooltip inside the canvas, keeping the offset
+                tooltip.style.left = `${rect.left + x + 10}px`; // Adjust with offset as needed
+                tooltip.style.top = `${rect.top + y + 10}px`;   // Adjust with offset as needed
             };
 
             canvas.addEventListener('mousedown', (event) => {
@@ -315,6 +328,33 @@
             });
 
             canvas.addEventListener('mouseup', stopDragging);
+
+            // Show the tooltip when entering the canvas
+            canvas.addEventListener('mouseenter', () => {
+                tooltip.style.display = 'block'; // Show tooltip
+            });
+
+            // Hide the tooltip when leaving the canvas
+            canvas.addEventListener('mouseleave', () => {
+                tooltip.style.display = 'none'; // Hide tooltip
+            });
+
+            // Update the tooltip position on mousemove over the canvas
+            canvas.addEventListener('mousemove', (event) => {
+                const rect = canvas.getBoundingClientRect();
+                const x = event.clientX - rect.left;
+                const y = event.clientY - rect.top;
+
+                // Update tooltip only if it's not being dragged or hovering over a point
+                if (draggingPoint || findPointAt(x, y)) {
+                    updateTooltip(x, y); // Show tooltip while dragging or hovering a point
+                }
+
+                // Always update tooltip position when mouse moves inside the canvas
+                tooltip.style.left = `${event.clientX + 10}px`;  // 10px offset for spacing
+                tooltip.style.top = `${event.clientY + 10}px`;   // 10px offset for spacing
+            });
+
 
             canvas.addEventListener('contextmenu', (event) => {
                 event.preventDefault();
