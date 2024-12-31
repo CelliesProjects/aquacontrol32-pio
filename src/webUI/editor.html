@@ -296,15 +296,23 @@
                 contextMenu.style.display = 'block';
             };
 
-            // Handle the "Delete Timer" option
             contextMenu.addEventListener('click', (event) => {
                 if (event.target.id === 'deletePoint') {
                     if (rightClickedPoint) {
-                        // Delete the timer and update the timeline
-                        const index = channelTimers.indexOf(rightClickedPoint);
-                        if (index !== -1) {
-                            channelTimers.splice(index, 1);
-                            drawTimeline(); // Redraw the timeline after deletion
+                        // Check if it's the first timer (00:00)
+                        if (rightClickedPoint.time === 0) {
+                            alert("The first timer cannot be deleted.");
+                        } else {
+                            const timerTime = formatTime(rightClickedPoint.time); // Format the time to HH:MM
+                            // Show the time of the deleted timer in the tooltip
+                            tooltip.textContent = `Deleted Timer at ${timerTime}`;
+                            tooltip.style.display = 'block';
+
+                            const index = channelTimers.indexOf(rightClickedPoint);
+                            if (index !== -1) {
+                                channelTimers.splice(index, 1); // Remove the timer from the array
+                                drawTimeline(); // Redraw the timeline after deletion
+                            }
                         }
                     }
                     hideContextMenu();
@@ -385,27 +393,6 @@
                 if (rightClickedPoint && rightClickedPoint.time !== 0) { // Don't show context menu for first timer
                     showContextMenu(event.clientX, event.clientY);
                 }
-            });
-
-            deletePointButton.addEventListener('click', () => {
-                if (rightClickedPoint) {
-                    // Check if it's the first timer (00:00)
-                    if (rightClickedPoint.time === 0) {
-                        alert("The first timer cannot be deleted.");
-                    } else {
-                        const timerTime = formatTime(rightClickedPoint.time); // Format the time to HH:MM
-                        // Show the time of the deleted timer in the tooltip
-                        tooltip.textContent = `Deleted Timer at ${timerTime}`;
-                        tooltip.style.display = 'block';
-
-                        const index = channelTimers.indexOf(rightClickedPoint);
-                        if (index !== -1) {
-                            channelTimers.splice(index, 1); // Remove the timer from the array
-                            drawTimeline(); // Redraw the timeline after deletion
-                        }
-                    }
-                }
-                hideContextMenu();
             });
 
             document.addEventListener('click', (event) => {
