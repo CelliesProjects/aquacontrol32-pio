@@ -260,26 +260,50 @@
 
             const dragPoint = (x, y) => {
                 if (draggingPoint) {
-                    if (draggingPoint.time === 0) {
-                        // First timer: Only allow intensity change, but prevent time change
-                        const newIntensity = Math.max(0, Math.min(100, yToIntensity(y)));
-                        draggingPoint.intensity = newIntensity;
-                        channelTimers[channelTimers.length - 1].intensity = newIntensity; // Update last timer to match first timer's intensity
+                    const newTime = Math.max(60, Math.min(86400 - 60, xToTime(x)));
+                    const newIntensity = Math.max(0, Math.min(100, yToIntensity(y)));
+
+                    // Check if the new time conflicts with any existing timer
+                    const conflictingTimer = channelTimers.find(timer => timer.time === newTime && timer !== draggingPoint);
+
+                    // If there is a conflict, mark the point as red (occupied)
+                    if (conflictingTimer) {
+                        // Draw the occupied timer in red
+                        drawTimeline(newTime, true); // Draw the red indication (the logic for this needs to be inside drawTimeline)
                     } else {
-                        // Other timers: Allow full drag (time and intensity)
-                        const newTime = Math.max(60, Math.min(86400 - 60, xToTime(x)));
-                        const newIntensity = Math.max(0, Math.min(100, yToIntensity(y)));
+                        // Continue with the drag and no conflict
                         draggingPoint.time = newTime;
                         draggingPoint.intensity = newIntensity;
-                        channelTimers.sort((a, b) => a.time - b.time); // Keep timers ordered
+
+                        // Ensure timers are sorted during dragging
+                        channelTimers.sort((a, b) => a.time - b.time);
+                        drawTimeline(); // Redraw the timeline with the updated position
                     }
-                    drawTimeline();
                 }
             };
 
             const stopDragging = () => {
-                draggingPoint = null;
+                if (draggingPoint) {
+                    // Check if there is a timer at the same time
+                    const existingPoint = channelTimers.find(timer => timer.time === draggingPoint.time);
+
+                    if (existingPoint) {
+                        // If the same time exists, replace the old timer with the dragged one
+                        const index = channelTimers.indexOf(existingPoint);
+                        if (index !== -1) {
+                            channelTimers[index] = draggingPoint; // Replace the old timer with the dragged one
+                        }
+                    } else {
+                        // If no existing timer at that time, just add the new one
+                        channelTimers.push(draggingPoint);
+                        channelTimers.sort((a, b) => a.time - b.time); // Keep the array sorted by time
+                    }
+
+                    draggingPoint = null; // End dragging
+                    drawTimeline(); // Redraw the timeline after update
+                }
             };
+
 
             const showContextMenu = (x, y) => {
                 const time = formatTime(rightClickedPoint.time); // Get the time of the right-clicked timer
