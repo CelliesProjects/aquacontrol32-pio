@@ -331,7 +331,6 @@
                 tooltip.style.top = `${rect.top + y + 10}px`;   // Adjust with offset as needed
             };
 
-
             canvas.addEventListener('mousedown', (event) => {
                 if (event.button === 2) return; // Right-click, skip default behavior
                 const rect = canvas.getBoundingClientRect();
@@ -364,8 +363,6 @@
                 }
             });
 
-
-
             canvas.addEventListener('mouseup', stopDragging);
 
             // Show the tooltip when entering the canvas
@@ -378,23 +375,6 @@
                 tooltip.style.display = 'none'; // Hide tooltip
             });
 
-            // Update the tooltip position on mousemove over the canvas
-            canvas.addEventListener('mousemove', (event) => {
-                const rect = canvas.getBoundingClientRect();
-                const x = event.clientX - rect.left;
-                const y = event.clientY - rect.top;
-
-                // Update tooltip only if it's not being dragged or hovering over a point
-                if (draggingPoint || findPointAt(x, y)) {
-                    updateTooltip(x, y); // Show tooltip while dragging or hovering a point
-                }
-
-                // Always update tooltip position when mouse moves inside the canvas
-                tooltip.style.left = `${event.clientX + 10}px`;  // 10px offset for spacing
-                tooltip.style.top = `${event.clientY + 10}px`;   // 10px offset for spacing
-            });
-
-
             canvas.addEventListener('contextmenu', (event) => {
                 event.preventDefault();
                 const rect = canvas.getBoundingClientRect();
@@ -406,7 +386,6 @@
                     showContextMenu(event.clientX, event.clientY);
                 }
             });
-
 
             deletePointButton.addEventListener('click', () => {
                 if (rightClickedPoint) {
