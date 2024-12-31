@@ -313,25 +313,6 @@
                 }
             });
 
-
-            // The delete functionality for the context menu
-            contextMenu.addEventListener('click', (event) => {
-                if (event.target.id === 'deletePoint') {
-                    if (rightClickedPoint) {
-                        // Delete the timer and update the timeline
-                        const index = channelTimers.indexOf(rightClickedPoint);
-                        if (index !== -1) {
-                            channelTimers.splice(index, 1);
-                            drawTimeline(); // Redraw the timeline after deletion
-                        }
-                    }
-                    hideContextMenu();
-                } else if (event.target.id === 'cancelPoint') {
-                    hideContextMenu(); // Close the menu if "Cancel" is clicked
-                }
-            });
-
-
             const hideContextMenu = () => {
                 contextMenu.style.display = 'none';
             };
@@ -447,8 +428,6 @@
                 }
                 hideContextMenu();
             });
-
-
 
             document.addEventListener('click', (event) => {
                 if (event.target !== contextMenu && !contextMenu.contains(event.target)) {
