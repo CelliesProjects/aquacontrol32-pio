@@ -300,13 +300,8 @@
                     if (rightClickedPoint) {
                         // Check if it's the first timer (00:00)
                         if (rightClickedPoint.time === 0) {
-                            alert("The first timer cannot be deleted.");
+                            return;
                         } else {
-                            const timerTime = formatTime(rightClickedPoint.time); // Format the time to HH:MM
-                            // Show the time of the deleted timer in the tooltip
-                            tooltip.textContent = `Deleted Timer at ${timerTime}`;
-                            tooltip.style.display = 'block';
-
                             const index = channelTimers.indexOf(rightClickedPoint);
                             if (index !== -1) {
                                 channelTimers.splice(index, 1); // Remove the timer from the array
