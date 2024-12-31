@@ -92,11 +92,48 @@
             let rightClickedPoint = null;
             const pointRadius = 8; // Increased radius for easier clicks
 
+            const displayTimersList = () => {
+                // Get the container where the list will be displayed
+                const listContainer = document.getElementById('timersList');
+
+                // If the container doesn't exist, create it
+                if (!listContainer) {
+                    const newListContainer = document.createElement('div');
+                    newListContainer.id = 'timersList';
+                    newListContainer.style.marginTop = '20px';
+                    newListContainer.style.width = '90%';
+                    newListContainer.style.maxWidth = '1200px';
+                    document.body.appendChild(newListContainer);
+                }
+
+                // Get the current list of timers (exclude the 24:00 timer, which is a copy)
+                const timers = channelTimers.filter(timer => timer.time !== 86400); // Exclude the 24:00 timer
+
+                // Clear any existing content in the list container
+                listContainer.innerHTML = '';
+
+                // Create and append the header for the list
+                const header = document.createElement('h3');
+                header.textContent = 'Current Timers';
+                listContainer.appendChild(header);
+
+                // Create a list element for each timer
+                const ul = document.createElement('ul');
+                timers.forEach(timer => {
+                    const li = document.createElement('li');
+                    li.textContent = `Time: ${formatTime(timer.time)} | Intensity: ${timer.intensity}%`;
+                    ul.appendChild(li);
+                });
+
+                listContainer.appendChild(ul);
+            };
+
             const resizeCanvas = () => {
                 const rect = canvas.getBoundingClientRect();
                 canvas.width = rect.width;
                 canvas.height = rect.height; // Fixed height from CSS
                 drawTimeline();
+                //displayTimersList();
             };
 
             // Buffer area height (top and bottom)
@@ -223,6 +260,7 @@
                     ctx.arc(x, y, pointRadius, 0, Math.PI * 2);
                     ctx.fill();
                 });
+                displayTimersList();
             };
 
             const findPointAt = (x, y) => {
@@ -260,24 +298,39 @@
 
             const dragPoint = (x, y) => {
                 if (draggingPoint) {
-                    const newTime = Math.max(60, Math.min(86400 - 60, xToTime(x)));
-                    const newIntensity = Math.max(0, Math.min(100, yToIntensity(y)));
-
-                    // Check if the new time conflicts with any existing timer
-                    const conflictingTimer = channelTimers.find(timer => timer.time === newTime && timer !== draggingPoint);
-
-                    // If there is a conflict, mark the point as red (occupied)
-                    if (conflictingTimer) {
-                        // Draw the occupied timer in red
-                        drawTimeline(newTime, true); // Draw the red indication (the logic for this needs to be inside drawTimeline)
-                    } else {
-                        // Continue with the drag and no conflict
-                        draggingPoint.time = newTime;
+                    // For the first point (00:00), allow dragging only the intensity
+                    if (draggingPoint.time === 0) {
+                        const newIntensity = Math.max(0, Math.min(100, yToIntensity(y)));
                         draggingPoint.intensity = newIntensity;
 
-                        // Ensure timers are sorted during dragging
-                        channelTimers.sort((a, b) => a.time - b.time);
-                        drawTimeline(); // Redraw the timeline with the updated position
+                        // Ensure the 24:00 timer mirrors the 00:00 timer
+                        const mirroredTimer = channelTimers.find(timer => timer.time === 86400);
+                        if (mirroredTimer) {
+                            mirroredTimer.intensity = newIntensity; // Mirror intensity
+                        }
+
+                        drawTimeline();
+                        displayTimersList(); // Refresh the list to reflect the mirrored timer
+                    } else {
+                        // For other points, allow both time and intensity dragging
+                        const newTime = Math.max(60, Math.min(86400 - 60, xToTime(x)));
+                        const newIntensity = Math.max(0, Math.min(100, yToIntensity(y)));
+
+                        // Check if the new time conflicts with any existing timer
+                        const conflictingTimer = channelTimers.find(timer => timer.time === newTime && timer !== draggingPoint);
+
+                        if (conflictingTimer) {
+                            drawTimeline(newTime, true); // Handle conflicts (this logic should be inside drawTimeline)
+                        } else {
+                            // Continue with the drag and no conflict
+                            draggingPoint.time = newTime;
+                            draggingPoint.intensity = newIntensity;
+
+                            // Ensure timers are sorted during dragging
+                            channelTimers.sort((a, b) => a.time - b.time);
+                            drawTimeline(); // Redraw the timeline with the updated position
+                            displayTimersList();
+                        }
                     }
                 }
             };
@@ -301,6 +354,7 @@
 
                     draggingPoint = null; // End dragging
                     drawTimeline(); // Redraw the timeline after update
+                    displayTimersList();
                 }
             };
 
