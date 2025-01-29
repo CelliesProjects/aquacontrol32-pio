@@ -48,6 +48,20 @@ static void ntpCb(void *cb_arg)
 {
     log_i("NTP synced");
     sntp_set_time_sync_notification_cb(NULL);
+
+    const BaseType_t result = xTaskCreate(httpTask,
+                             NULL,
+                             4096,
+                             NULL,
+                             tskIDLE_PRIORITY,
+                             NULL);
+    if (result != pdPASS)
+    {
+        log_e("could not start httpTask. system halted!");
+        while (1)
+            delay(100);
+    }
+
     startDimmerTask();
 }
 
@@ -267,21 +281,6 @@ void setup(void)
     log_i("syncing NTP");
     sntp_set_time_sync_notification_cb((sntp_sync_time_cb_t)ntpCb);
     configTzTime(TIMEZONE, NTP_POOL);
-
-    messageOnLcd("Starting http server...");
-
-    result = xTaskCreate(httpTask,
-                         NULL,
-                         4096,
-                         NULL,
-                         tskIDLE_PRIORITY + 1,
-                         NULL);
-    if (result != pdPASS)
-    {
-        log_e("could not start httpTask. system halted!");
-        while (1)
-            delay(100);
-    }    
 
     vTaskDelete(NULL);
 }
