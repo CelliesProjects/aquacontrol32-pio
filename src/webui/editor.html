@@ -77,16 +77,14 @@
         { time: 39600, intensity: 100 },
         { time: 64800, intensity: 100 },
         { time: 68400, intensity: 0 },
-        { time: 86400, intensity: 0 } // Mirrored from 0,0 should not be saved or uploaded
+        { time: 86400, intensity: 0 } // Mirrored from 0,0
     ];
 
     // Function to upload timers for a specific channel
     const uploadTimers = (channel) => {
         let csvData = '';
         channelTimers.forEach(timer => {
-            if (timer.time !== 86400) { // Exclude the mirrored timer
-                csvData += `${timer.time},${timer.intensity}\n`;
-            }
+            csvData += `${timer.time},${timer.intensity}\n`;
         });
 
         fetch(`/upload?channel=${channel}`, {

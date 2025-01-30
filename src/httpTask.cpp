@@ -70,9 +70,13 @@ void httpTask(void *parameter)
             int startIdx = 0;
             int endIdx = csvData.indexOf('\n');
 
+            log_d("Parsing timers for channel %i", choice);
+
             while (endIdx != -1)
             {
                 String line = csvData.substring(startIdx, endIdx);
+
+                if (line.length() == 0) continue;
 
                 int commaIdx = line.indexOf(',');
 
@@ -82,13 +86,26 @@ void httpTask(void *parameter)
                     int percentage = strtol(line.substring(commaIdx + 1).c_str(), NULL, 10);
 
                     if (time > 86400 || percentage > 100)
+                    {
+                        log_e("Timer data value overflow");
                         return request->reply(400, TEXT_PLAIN, "Invalid timer data");
+                    }
 
                     newTimers.push_back({time, percentage});
+
+                    log_v("Staging% 6i,% 4i for channel %i", time, percentage, choice);
                 }
 
                 startIdx = endIdx + 1;
                 endIdx = csvData.indexOf('\n', startIdx);
+            }
+
+            if (newTimers.size() < 2 || 
+                newTimers.front().time != 0 || newTimers.back().time != 86400 ||
+                newTimers.front().percentage != newTimers.back().percentage)
+            {
+                log_e("Staged timerdata failed sanity check");
+                return request->reply(400, TEXT_PLAIN, "Data sanity check failed");
             }
 
             {
@@ -97,6 +114,8 @@ void httpTask(void *parameter)
                 for (auto &timer : newTimers)
                     channel[choice].push_back(timer);
             }
+
+            log_i("Wrote %i new timers to channel %i",channel[choice].size(), choice);
 
             return request->reply(200, TEXT_PLAIN, "Timers updated successfully"); }
 
