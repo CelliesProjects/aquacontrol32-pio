@@ -4,6 +4,9 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <PsychicHttp.h>
+#include <mutex>
+
+#include "lightTimer.h"
 
 extern void messageOnLcd(const char *str);
 
