@@ -40,7 +40,6 @@ void httpTask(void *parameter)
 
             {
                 std::lock_guard<std::mutex> lock(channelMutex);
-
                 for (auto &timer : channel[choice])
                 {
                     if (timer.time == 86400)
@@ -57,51 +56,49 @@ void httpTask(void *parameter)
     server.on(
         "/upload", HTTP_POST, [](PsychicRequest *request)
         {
-        if (!request->hasParam("channel"))
-            return request->reply(400, TEXT_PLAIN, "No channel parameter provided");
+            if (!request->hasParam("channel"))
+                return request->reply(400, TEXT_PLAIN, "No channel parameter provided");
 
-        const uint8_t choice = strtol(request->getParam("channel")->value().c_str(), NULL, 10);
+            const uint8_t choice = strtol(request->getParam("channel")->value().c_str(), NULL, 10);
 
-        if (choice >= NUMBER_OF_CHANNELS)
-            return request->reply(400, TEXT_PLAIN, "Valid channels are 0-4");
+            if (choice >= NUMBER_OF_CHANNELS)
+                return request->reply(400, TEXT_PLAIN, "Valid channels are 0-4");
 
-        // Get the CSV data from the request body
-        String csvData = request->body();
+            String csvData = request->body();
 
-        // Parse the CSV data
-        std::vector<lightTimer_t> newTimers;
-        int startIdx = 0;
-        int endIdx = csvData.indexOf('\n');
+            std::vector<lightTimer_t> newTimers;
+            int startIdx = 0;
+            int endIdx = csvData.indexOf('\n');
 
-        while (endIdx != -1)
-        {
-            String line = csvData.substring(startIdx, endIdx);
-            int commaIdx = line.indexOf(',');
-
-            if (commaIdx != -1)
+            while (endIdx != -1)
             {
-                int time = strtol(line.substring(0, commaIdx).c_str(), NULL, 10);
-                int percentage = strtol(line.substring(commaIdx + 1).c_str(), NULL, 10);
+                String line = csvData.substring(startIdx, endIdx);
 
-                // Validate time and percentage
-                if (time >= 86400 || percentage > 100)
-                    return request->reply(400, TEXT_PLAIN, "Invalid timer data");
+                int commaIdx = line.indexOf(',');
 
-                newTimers.push_back({time, percentage});
+                if (commaIdx != -1)
+                {
+                    int time = strtol(line.substring(0, commaIdx).c_str(), NULL, 10);
+                    int percentage = strtol(line.substring(commaIdx + 1).c_str(), NULL, 10);
+
+                    if (time > 86400 || percentage > 100)
+                        return request->reply(400, TEXT_PLAIN, "Invalid timer data");
+
+                    newTimers.push_back({time, percentage});
+                }
+
+                startIdx = endIdx + 1;
+                endIdx = csvData.indexOf('\n', startIdx);
             }
 
-            startIdx = endIdx + 1;
-            endIdx = csvData.indexOf('\n', startIdx);
-        }
+            {
+                std::lock_guard<std::mutex> lock(channelMutex);
+                channel[choice].clear();
+                for (auto &timer : newTimers)
+                    channel[choice].push_back(timer);
+            }
 
-        {
-            std::lock_guard<std::mutex> lock(channelMutex);
-            channel[choice].clear();
-            for (auto &timer : newTimers)
-                channel[choice].push_back(timer);
-        }
-
-        return request->reply(200, TEXT_PLAIN, "Timers updated successfully"); }
+            return request->reply(200, TEXT_PLAIN, "Timers updated successfully"); }
 
     );
 
@@ -109,15 +106,14 @@ void httpTask(void *parameter)
         [](PsychicRequest *request)
         {
             log_e("404 - Not found: 'http://%s%s'", request->host().c_str(), request->url().c_str());
-            return request->reply(404, TEXT_HTML, "<h1>FOUR OH FOUR NOT FOUND</h1>"); });
+            return request->reply(404, TEXT_HTML, "<h1>FOUR OH FOUR NOT FOUND</h1>"); }
+
+    );
 
     DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");
 
-    // Log that the server is running
     log_i("HTTP server started at %s", WiFi.localIP().toString());
-    // messageOnLcd(const char *str);
 
-    // Main task loop
     while (1)
     {
         vTaskDelay(pdMS_TO_TICKS(1000));
