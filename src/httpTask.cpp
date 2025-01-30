@@ -54,6 +54,57 @@ void httpTask(void *parameter)
 
     );
 
+    server.on(
+        "/upload", HTTP_POST, [](PsychicRequest *request)
+        {
+        if (!request->hasParam("channel"))
+            return request->reply(400, TEXT_PLAIN, "No channel parameter provided");
+
+        const uint8_t choice = strtol(request->getParam("channel")->value().c_str(), NULL, 10);
+
+        if (choice >= NUMBER_OF_CHANNELS)
+            return request->reply(400, TEXT_PLAIN, "Valid channels are 0-4");
+
+        // Get the CSV data from the request body
+        String csvData = request->body();
+
+        // Parse the CSV data
+        std::vector<lightTimer_t> newTimers;
+        int startIdx = 0;
+        int endIdx = csvData.indexOf('\n');
+
+        while (endIdx != -1)
+        {
+            String line = csvData.substring(startIdx, endIdx);
+            int commaIdx = line.indexOf(',');
+
+            if (commaIdx != -1)
+            {
+                int time = strtol(line.substring(0, commaIdx).c_str(), NULL, 10);
+                int percentage = strtol(line.substring(commaIdx + 1).c_str(), NULL, 10);
+
+                // Validate time and percentage
+                if (time >= 86400 || percentage > 100)
+                    return request->reply(400, TEXT_PLAIN, "Invalid timer data");
+
+                newTimers.push_back({time, percentage});
+            }
+
+            startIdx = endIdx + 1;
+            endIdx = csvData.indexOf('\n', startIdx);
+        }
+
+        {
+            std::lock_guard<std::mutex> lock(channelMutex);
+            channel[choice].clear();
+            for (auto &timer : newTimers)
+                channel[choice].push_back(timer);
+        }
+
+        return request->reply(200, TEXT_PLAIN, "Timers updated successfully"); }
+
+    );
+
     server.onNotFound(
         [](PsychicRequest *request)
         {
