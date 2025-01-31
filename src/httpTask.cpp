@@ -110,7 +110,7 @@ void httpTask(void *parameter)
                     channel[choice].push_back(timer);
             }
 
-            log_i("Wrote %i new timers to channel %i",channel[choice].size(), choice);
+            log_i("Cleared and added %i new timers to channel %i",channel[choice].size(), choice);
 
             return request->reply(200, TEXT_PLAIN, "Timers updated successfully"); }
 
