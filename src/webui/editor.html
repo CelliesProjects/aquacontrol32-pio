@@ -79,9 +79,10 @@
         { time: 68400, intensity: 0 },
         { time: 86400, intensity: 0 } // Mirrored from 0,0
     ];
+    let currentChannel = 0;
 
-    // Function to upload timers for a specific channel
     const uploadTimers = (channel) => {
+        channel = Number(channel);
         let csvData = '';
         channelTimers.forEach(timer => {
             csvData += `${timer.time},${timer.intensity}\n`;
@@ -96,7 +97,7 @@
         })
             .then(response => {
                 if (response.ok) {
-                    alert(`Channel ${channel + 1} timers uploaded successfully!`);
+                    alert(`Channel ${1 + channel} timers uploaded successfully!`);
                 } else {
                     response.text().then(text => {
                         alert(`Failed to upload timers: ${text}`);
@@ -107,16 +108,19 @@
                 alert(`Error uploading timers: ${error.message}`);
             });
     };
+
+    const changeChannel = () => {
+        // show a dialog with options:
+        // - reload one of the other channels in the current window
+        // - cancel
+    };
 </script>
 
 <body>
-    <h1>AquaControl timer editor</h1>
+    <h1 id="title">waiting for channel data...</h1>
     <div id="uploadButtons">
-        <button onclick="uploadTimers(0)">Upload Channel 1</button>
-        <button onclick="uploadTimers(1)">Upload Channel 2</button>
-        <button onclick="uploadTimers(2)">Upload Channel 3</button>
-        <button onclick="uploadTimers(3)">Upload Channel 4</button>
-        <button onclick="uploadTimers(4)">Upload Channel 5</button>
+        <button onclick="uploadTimers(currentChannel)">Save Channel</button>
+        <button onclick="changeChannel()">Change channel</button>
     </div>
     <canvas id="timelineCanvas"></canvas>
     <div id="timersList"></div>
@@ -509,7 +513,50 @@
 
             window.addEventListener('resize', resizeCanvas);
 
-            resizeCanvas();
+            const downloadTimers = (channel) => {
+                channel = Number(channel);
+                fetch(`/timers?channel=${channel}`)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`Failed to fetch timers: ${response.statusText}`);
+                        }
+                        return response.text();
+                    })
+                    .then(text => {
+                        channelTimers.length = 0; // Clear existing timers
+                        text.trim().split('\n').forEach(line => {
+                            const [time, intensity] = line.split(',').map(Number);
+                            if (!isNaN(time) && !isNaN(intensity)) {
+                                channelTimers.push({ time, intensity });
+                            }
+                        });
+                        console.log(`Channel ${(channel + 1)} timers downloaded:`, channelTimers);
+                        title.innerHTML = "editing channel " + (channel + 1);
+                        resizeCanvas();
+                    })
+                    .catch(error => {
+                        console.error("Error downloading timers:", error);
+                        alert(`Error downloading timers: ${error.message}`);
+                    });
+            };
+
+            const queryString = window.location.search;
+            const urlParams = new URLSearchParams(queryString);
+
+            if (urlParams.has('channel'))
+                currentChannel = urlParams.get('channel');
+            else {
+                currentChannel = 0;
+                alert("no channel given. defaulting to channel 1");
+            }
+
+
+            if (currentChannel < 0 || currentChannel > 4) {
+                currentChannel = 0;
+                alert("invalid channel. defaulting to channel 1");
+            }
+
+            downloadTimers(currentChannel);
         })();
     </script>
 </body>
