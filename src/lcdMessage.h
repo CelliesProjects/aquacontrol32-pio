@@ -7,7 +7,8 @@ enum lcdMessageType
     LCD_SYSTEM_MESSAGE,
     UPDATE_LIGHTS,
     MOON_PHASE,
-    TEMPERATURE
+    TEMPERATURE,
+    SHOW_IP
 };
 
 struct lcdMessage_t
