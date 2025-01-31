@@ -70,19 +70,16 @@
         }
     </style>
 </head>
+
 <script>
     const channelTimers = [
         { time: 0, intensity: 0 },
-        { time: 36000, intensity: 0 },
-        { time: 39600, intensity: 100 },
-        { time: 64800, intensity: 100 },
-        { time: 68400, intensity: 0 },
         { time: 86400, intensity: 0 } // Mirrored from 0,0
     ];
+
     let currentChannel = 0;
 
     const uploadTimers = (channel) => {
-        channel = Number(channel);
         let csvData = '';
         channelTimers.forEach(timer => {
             csvData += `${timer.time},${timer.intensity}\n`;
@@ -154,7 +151,6 @@
         // Append the window to the body
         document.body.appendChild(selectWindow);
     };
-
 </script>
 
 <body>
@@ -437,7 +433,6 @@
                 }
             };
 
-
             const showContextMenu = (x, y) => {
                 const time = formatTime(rightClickedPoint.time); // Get the time of the right-clicked timer
 
@@ -555,7 +550,6 @@
             window.addEventListener('resize', resizeCanvas);
 
             const downloadTimers = (channel) => {
-                channel = Number(channel);
                 fetch(`/timers?channel=${channel}`)
                     .then(response => {
                         if (!response.ok) {
@@ -567,12 +561,11 @@
                         channelTimers.length = 0; // Clear existing timers
                         text.trim().split('\n').forEach(line => {
                             const [time, intensity] = line.split(',').map(Number);
-                            if (!isNaN(time) && !isNaN(intensity)) {
+                            if (!isNaN(time) && !isNaN(intensity))
                                 channelTimers.push({ time, intensity });
-                            }
                         });
-                        console.log(`Channel ${(channel)} timers downloaded:`, channelTimers);
-                        title.innerHTML = "editing channel " + (channel);
+                        console.log(`Channel ${channel} timers downloaded:`, channelTimers);
+                        title.innerHTML = `now editing channel ${channel}`;
                         resizeCanvas();
                     })
                     .catch(error => {
@@ -581,19 +574,19 @@
                     });
             };
 
-            const queryString = window.location.search;
-            const urlParams = new URLSearchParams(queryString);
+            const urlParams = new URLSearchParams(window.location.search);
 
-            if (urlParams.has('channel'))
-                currentChannel = urlParams.get('channel');
+            if (urlParams.has('channel')) {
+                currentChannel = Number(urlParams.get('channel'));
+            }
             else {
                 currentChannel = 0;
-                alert("no channel given. defaulting to channel 0");
+                alert("no channel requested. defaulting to channel 0");
             }
 
-            if (currentChannel < 0 || currentChannel > 4) {
+            if (isNaN(currentChannel) || currentChannel < 0 || currentChannel > 4) {
+                alert(`${urlParams.get('channel')} is an invalid value.\n\nEditing defaults to channel 0.\n\nClick OK to continue.`);
                 currentChannel = 0;
-                alert("invalid channel. defaulting to channel 0");
             }
 
             downloadTimers(currentChannel);
