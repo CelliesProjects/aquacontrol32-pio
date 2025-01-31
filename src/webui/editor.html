@@ -110,14 +110,49 @@
     };
 
     const changeChannel = (channel) => {
-        // - reload the selected channel in the current window
+        window.location.search = `?channel=${channel}`;
     };
 
     const selectChannel = () => {
-        // show a dialog showing a text and buttons to select a different channel
-        // show a button to cancel
-        // on pressing the cancel button, cancel 
-        // on pressing one of the channel buttons, call changeChannel(channel) 
+        const selectWindow = document.createElement('div');
+        selectWindow.style.position = 'fixed';
+        selectWindow.style.top = '50%';
+        selectWindow.style.left = '50%';
+        selectWindow.style.transform = 'translate(-50%, -50%)';
+        selectWindow.style.padding = '20px';
+        selectWindow.style.backgroundColor = 'white';
+        selectWindow.style.border = '1px solid #ccc';
+        selectWindow.style.boxShadow = '0 0 10px rgba(0, 0, 0, 0.1)';
+
+        const dropdown = document.createElement('select');
+
+        for (let i = 0; i < 5; i++) {
+            const option = document.createElement('option');
+            option.value = i;
+            option.textContent = `Channel ${i}`;
+            dropdown.appendChild(option);
+        }
+
+        const cancelButton = document.createElement('button');
+        cancelButton.textContent = 'Cancel';
+        cancelButton.onclick = () => {
+            document.body.removeChild(selectWindow); // Close the window without doing anything
+        };
+
+        const selectButton = document.createElement('button');
+        selectButton.textContent = 'Select';
+        selectButton.onclick = () => {
+            changeChannel(dropdown.value); // Change channel and reload the page
+            document.body.removeChild(selectWindow); // Close the window
+        };
+
+        selectWindow.appendChild(dropdown);
+        selectWindow.appendChild(document.createElement('br'));
+        selectWindow.appendChild(selectButton);
+        selectWindow.appendChild(cancelButton);
+
+        // Append the window to the body
+        document.body.appendChild(selectWindow);
     };
 
 </script>
@@ -555,7 +590,6 @@
                 currentChannel = 0;
                 alert("no channel given. defaulting to channel 0");
             }
-
 
             if (currentChannel < 0 || currentChannel > 4) {
                 currentChannel = 0;
