@@ -41,12 +41,7 @@ void httpTask(void *parameter)
             {
                 std::lock_guard<std::mutex> lock(channelMutex);
                 for (auto &timer : channel[choice])
-                {
-                    if (timer.time == 86400)
-                        continue;
-
                     content += String(timer.time) + "," + String(timer.percentage) + "\n";
-                }
             }
 
             return request->reply(200, TEXT_PLAIN, content.c_str()); }
