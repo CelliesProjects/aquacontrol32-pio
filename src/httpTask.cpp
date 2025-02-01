@@ -7,16 +7,31 @@ constexpr char *TEXT_HTML = "text/html";
 constexpr char *TEXT_PLAIN = "text/plain";
 
 constexpr char *IF_MODIFIED_SINCE = "If-Modified-Since";
+constexpr char *IF_NONE_MATCH = "If-None-Match";
 
-static inline __attribute__((always_inline)) bool samePageIsCached(PsychicRequest *request, const char *date)
+static inline bool samePageIsCached(PsychicRequest *request, const char *date, const char *etag)
 {
-    return request->hasHeader(IF_MODIFIED_SINCE) && request->header(IF_MODIFIED_SINCE).equals(date);
+    bool modifiedSince = request->hasHeader(IF_MODIFIED_SINCE) && request->header(IF_MODIFIED_SINCE).equals(date);
+    bool noneMatch = request->hasHeader(IF_NONE_MATCH) && request->header(IF_NONE_MATCH).equals(etag);
+
+    return modifiedSince || noneMatch;
 }
 
-static void addStaticContentHeaders(PsychicResponse &response, const char *date)
+static void addStaticContentHeaders(PsychicResponse &response, const char *date, const char *etag)
 {
     response.addHeader("Last-Modified", date);
     response.addHeader("Cache-Control", "public, max-age=31536000");
+    response.addHeader("ETag", etag);
+}
+
+// todo: this can be done at compile time
+static void generateETag(const char *date)
+{
+    uint32_t hash = 0;
+    for (const char *p = date; *p; ++p)
+        hash = (hash * 31) + *p; // Simple hash function
+
+    snprintf(etagValue, sizeof(etagValue), "\"%" PRIX32 "\"", hash);
 }
 
 void httpTask(void *parameter)
@@ -27,19 +42,21 @@ void httpTask(void *parameter)
     static char lastModified[30];
     strftime(lastModified, sizeof(lastModified), "%a, %d %b %Y %X GMT", timeinfo);
 
+    generateETag(lastModified);
+
     server.listen(80);
 
     server.on(
         "/", HTTP_GET, [](PsychicRequest *request)
         {
-            if (samePageIsCached(request, lastModified))
+            if (samePageIsCached(request, lastModified, etagValue))
                 return request->reply(304);
 
             extern const uint8_t index_start[] asm("_binary_src_webui_index_html_start");
             extern const uint8_t index_end[] asm("_binary_src_webui_index_html_end");
 
             PsychicResponse response = PsychicResponse(request);
-            addStaticContentHeaders(response, lastModified);                    
+            addStaticContentHeaders(response, lastModified, etagValue);
             response.setContentType(TEXT_HTML);
             const size_t size = index_end - index_start;
             response.setContent(index_start, size);
@@ -50,14 +67,14 @@ void httpTask(void *parameter)
     server.on(
         "/editor", HTTP_GET, [](PsychicRequest *request)
         {
-            if (samePageIsCached(request, lastModified))
+            if (samePageIsCached(request, lastModified, etagValue))
                 return request->reply(304);
 
             extern const uint8_t editor_start[] asm("_binary_src_webui_editor_html_start");
             extern const uint8_t editor_end[] asm("_binary_src_webui_editor_html_end");   
 
             PsychicResponse response = PsychicResponse(request);
-            addStaticContentHeaders(response, lastModified);
+            addStaticContentHeaders(response, lastModified, etagValue);
             response.setContentType(TEXT_HTML);
             const size_t size = editor_end - editor_start;
             response.setContent(editor_start, size);
