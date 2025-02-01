@@ -1,13 +1,10 @@
 #include "httpTask.hpp"
 
-extern const uint8_t editor_start[] asm("_binary_src_webui_editor_html_start");
-extern const uint8_t editor_end[] asm("_binary_src_webui_editor_html_end");
-
 extern std::vector<lightTimer_t> channel[NUMBER_OF_CHANNELS];
 extern std::mutex channelMutex;
 
-const char *TEXT_HTML = "text/html";
-const char *TEXT_PLAIN = "text/plain";
+constexpr char *TEXT_HTML = "text/html";
+constexpr char *TEXT_PLAIN = "text/plain";
 
 void httpTask(void *parameter)
 {
@@ -16,9 +13,26 @@ void httpTask(void *parameter)
     server.on(
         "/", HTTP_GET, [](PsychicRequest *request)
         {
+            extern const uint8_t index_start[] asm("_binary_src_webui_index_html_start");
+            extern const uint8_t index_end[] asm("_binary_src_webui_index_html_end");
+
             PsychicResponse response = PsychicResponse(request);
             response.setContentType(TEXT_HTML);
-            size_t size = editor_end - editor_start;
+            const size_t size = index_end - index_start;
+            response.setContent(index_start, size);
+            return response.send(); }
+
+    );
+
+    server.on(
+        "/editor", HTTP_GET, [](PsychicRequest *request)
+        {
+            extern const uint8_t editor_start[] asm("_binary_src_webui_editor_html_start");
+            extern const uint8_t editor_end[] asm("_binary_src_webui_editor_html_end");
+
+            PsychicResponse response = PsychicResponse(request);
+            response.setContentType(TEXT_HTML);
+            const size_t size = editor_end - editor_start;
             response.setContent(editor_start, size);
             return response.send(); }
 
