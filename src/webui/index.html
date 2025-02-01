@@ -16,10 +16,12 @@
             justify-content: center;
             height: 100vh;
         }
+
         .container {
             display: flex;
             gap: 10px;
         }
+
         .channel {
             width: 100px;
             height: 50px;
@@ -43,7 +45,7 @@
         <div class="channel">Channel 4</div>
     </div>
     <script>
-        document.addEventListener("DOMContentLoaded", function () {           
+        document.addEventListener("DOMContentLoaded", function () {
             document.querySelectorAll(".channel").forEach((div, index) => {
                 div.addEventListener("click", function () {
                     window.location.href = "/editor?channel=" + index;
@@ -54,4 +56,3 @@
 </body>
 
 </html>
-
