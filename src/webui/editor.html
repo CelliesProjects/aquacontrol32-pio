@@ -72,7 +72,7 @@
 </head>
 
 <script>
-    const channelTimers = [
+    let channelTimers = [
         { time: 0, intensity: 0 },
         { time: 86400, intensity: 0 } // Mirrored from 0,0
     ];
@@ -109,55 +109,19 @@
     const changeChannel = (channel) => {
         window.location.search = `?channel=${channel}`;
     };
-
-    const selectChannel = () => {
-        const selectWindow = document.createElement('div');
-        selectWindow.style.position = 'fixed';
-        selectWindow.style.top = '50%';
-        selectWindow.style.left = '50%';
-        selectWindow.style.transform = 'translate(-50%, -50%)';
-        selectWindow.style.padding = '20px';
-        selectWindow.style.backgroundColor = 'white';
-        selectWindow.style.border = '1px solid #ccc';
-        selectWindow.style.boxShadow = '0 0 10px rgba(0, 0, 0, 0.1)';
-
-        const dropdown = document.createElement('select');
-
-        for (let i = 0; i < 5; i++) {
-            const option = document.createElement('option');
-            option.value = i;
-            option.textContent = `Channel ${i}`;
-            dropdown.appendChild(option);
-        }
-
-        const cancelButton = document.createElement('button');
-        cancelButton.textContent = 'Cancel';
-        cancelButton.onclick = () => {
-            document.body.removeChild(selectWindow); // Close the window without doing anything
-        };
-
-        const selectButton = document.createElement('button');
-        selectButton.textContent = 'Select';
-        selectButton.onclick = () => {
-            changeChannel(dropdown.value); // Change channel and reload the page
-            document.body.removeChild(selectWindow); // Close the window
-        };
-
-        selectWindow.appendChild(dropdown);
-        selectWindow.appendChild(document.createElement('br'));
-        selectWindow.appendChild(selectButton);
-        selectWindow.appendChild(cancelButton);
-
-        // Append the window to the body
-        document.body.appendChild(selectWindow);
-    };
 </script>
 
 <body>
     <h1 id="title">waiting for channel data...</h1>
     <div id="uploadButtons">
-        <button onclick="uploadTimers(currentChannel)">Save Channel</button>
-        <button onclick="selectChannel()">Change channel</button>
+        <button id="reloadButton">Reload Timers</button>
+        <button id="clearButton">Clear Timers</button>
+        <button onclick="uploadTimers(currentChannel)">Upload Timers</button>
+        <button onclick="changeChannel(0)">Edit Channel 0</button>
+        <button onclick="changeChannel(1)">Edit Channel 1</button>
+        <button onclick="changeChannel(2)">Edit Channel 2</button>
+        <button onclick="changeChannel(3)">Edit Channel 3</button>
+        <button onclick="changeChannel(4)">Edit Channel 4</button>
     </div>
     <canvas id="timelineCanvas"></canvas>
     <div id="timersList"></div>
@@ -203,12 +167,11 @@
                 listContainer.appendChild(ul);
             };
 
-            const resizeCanvas = () => {
+            const redrawCanvas = () => {
                 const rect = canvas.getBoundingClientRect();
                 canvas.width = rect.width;
                 canvas.height = rect.height; // Fixed height from CSS
                 drawTimeline();
-                //displayTimersList();
             };
 
             // Buffer area height (top and bottom)
@@ -547,7 +510,7 @@
                 }
             });
 
-            window.addEventListener('resize', resizeCanvas);
+            window.addEventListener('resize', redrawCanvas);
 
             const downloadTimers = (channel) => {
                 fetch(`/timers?channel=${channel}`)
@@ -566,13 +529,27 @@
                         });
                         console.log(`Channel ${channel} timers downloaded:`, channelTimers);
                         title.innerHTML = `now editing channel ${channel}`;
-                        resizeCanvas();
+                        redrawCanvas();
                     })
                     .catch(error => {
                         console.error("Error downloading timers:", error);
                         alert(`Error downloading timers: ${error.message}`);
                     });
             };
+
+
+            document.getElementById("reloadButton").addEventListener("click", function () {
+                downloadTimers(currentChannel);
+            });
+
+            document.getElementById("clearButton").addEventListener("click", function () {
+                channelTimers = [
+                    { time: 0, intensity: 0 },
+                    { time: 86400, intensity: 0 } // Mirrored from 0,0
+                ];
+                redrawCanvas();
+            });
+
 
             const urlParams = new URLSearchParams(window.location.search);
 
