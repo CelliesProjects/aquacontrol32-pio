@@ -25,6 +25,7 @@ static void addStaticContentHeaders(PsychicResponse &response, const char *date,
 }
 
 // todo: this can be done at compile time
+static char etagValue[16];
 static void generateETag(const char *date)
 {
     uint32_t hash = 0;

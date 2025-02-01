@@ -12,6 +12,5 @@ extern void messageOnLcd(const char *str);
 
 PsychicHttpServer server;
 
-static char etagValue[16];
-
 #endif
+
