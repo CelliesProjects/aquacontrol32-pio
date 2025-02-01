@@ -80,6 +80,9 @@
     let currentChannel = 0;
 
     const uploadTimers = (channel) => {
+        if (!confirm("Do you want to proceed?"))
+            return;
+
         let csvData = '';
         channelTimers.forEach(timer => {
             csvData += `${timer.time},${timer.intensity}\n`;
@@ -539,34 +542,38 @@
 
 
             document.getElementById("reloadButton").addEventListener("click", function () {
-                downloadTimers(currentChannel);
+                if (confirm("Do you want to proceed?"))
+                    downloadTimers(currentChannel);
             });
 
             document.getElementById("clearButton").addEventListener("click", function () {
-                channelTimers = [
-                    { time: 0, intensity: 0 },
-                    { time: 86400, intensity: 0 } // Mirrored from 0,0
-                ];
-                redrawCanvas();
+                if (confirm("Do you want to proceed?")) {
+                    channelTimers = [
+                        { time: 0, intensity: 0 },
+                        { time: 86400, intensity: 0 } // Mirrored from 0,0
+                    ];
+                    redrawCanvas();
+                }
             });
 
+            document.addEventListener("DOMContentLoaded", function () {
+                const urlParams = new URLSearchParams(window.location.search);
 
-            const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.has('channel')) {
+                    currentChannel = Number(urlParams.get('channel'));
+                }
+                else {
+                    currentChannel = 0;
+                    alert("no channel requested. defaulting to channel 0");
+                }
 
-            if (urlParams.has('channel')) {
-                currentChannel = Number(urlParams.get('channel'));
-            }
-            else {
-                currentChannel = 0;
-                alert("no channel requested. defaulting to channel 0");
-            }
+                if (isNaN(currentChannel) || currentChannel < 0 || currentChannel > 4) {
+                    alert(`${urlParams.get('channel')} is an invalid value.\n\nEditing defaults to channel 0.\n\nClick OK to continue.`);
+                    currentChannel = 0;
+                }
 
-            if (isNaN(currentChannel) || currentChannel < 0 || currentChannel > 4) {
-                alert(`${urlParams.get('channel')} is an invalid value.\n\nEditing defaults to channel 0.\n\nClick OK to continue.`);
-                currentChannel = 0;
-            }
-
-            downloadTimers(currentChannel);
+                downloadTimers(currentChannel);
+            });
         })();
     </script>
 </body>
