@@ -110,7 +110,7 @@
     };
 
     const changeChannel = (channel) => {
-        window.location.search = `?channel=${channel}`;
+        window.location = `?channel=${channel}`;
     };
 </script>
 
@@ -220,7 +220,7 @@
                     ctx.stroke();
 
                     // Draw the hour labels centered on the grid lines
-                    const labelText = `${i}:00`;
+                    const labelText = `${i}h`;
                     ctx.font = '12px Arial';
                     const textWidth = ctx.measureText(labelText).width; // Calculate the width of the text
                     ctx.fillStyle = '#000'; // Black color for the text
