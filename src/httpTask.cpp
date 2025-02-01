@@ -6,17 +6,40 @@ extern std::mutex channelMutex;
 constexpr char *TEXT_HTML = "text/html";
 constexpr char *TEXT_PLAIN = "text/plain";
 
+constexpr char *IF_MODIFIED_SINCE = "If-Modified-Since";
+
+static inline __attribute__((always_inline)) bool samePageIsCached(PsychicRequest *request, const char *date)
+{
+    return request->hasHeader(IF_MODIFIED_SINCE) && request->header(IF_MODIFIED_SINCE).equals(date);
+}
+
+static void addStaticContentHeaders(PsychicResponse &response, const char *date)
+{
+    response.addHeader("Last-Modified", date);
+    response.addHeader("Cache-Control", "public, max-age=31536000");
+}
+
 void httpTask(void *parameter)
 {
+    time_t rawTime = time(NULL); // TODO: change this to compile time like in the feather player project
+    const struct tm *timeinfo = gmtime(&rawTime);
+
+    static char lastModified[30];
+    strftime(lastModified, sizeof(lastModified), "%a, %d %b %Y %X GMT", timeinfo);
+
     server.listen(80);
 
     server.on(
         "/", HTTP_GET, [](PsychicRequest *request)
         {
+            if (samePageIsCached(request, lastModified))
+                return request->reply(304);
+
             extern const uint8_t index_start[] asm("_binary_src_webui_index_html_start");
             extern const uint8_t index_end[] asm("_binary_src_webui_index_html_end");
 
             PsychicResponse response = PsychicResponse(request);
+            addStaticContentHeaders(response, lastModified);                    
             response.setContentType(TEXT_HTML);
             const size_t size = index_end - index_start;
             response.setContent(index_start, size);
@@ -27,10 +50,14 @@ void httpTask(void *parameter)
     server.on(
         "/editor", HTTP_GET, [](PsychicRequest *request)
         {
+            if (samePageIsCached(request, lastModified))
+                return request->reply(304);
+
             extern const uint8_t editor_start[] asm("_binary_src_webui_editor_html_start");
-            extern const uint8_t editor_end[] asm("_binary_src_webui_editor_html_end");
+            extern const uint8_t editor_end[] asm("_binary_src_webui_editor_html_end");   
 
             PsychicResponse response = PsychicResponse(request);
+            addStaticContentHeaders(response, lastModified);
             response.setContentType(TEXT_HTML);
             const size_t size = editor_end - editor_start;
             response.setContent(editor_start, size);
