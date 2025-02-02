@@ -174,12 +174,12 @@
 
                 // Clear any existing content in the list container
                 listContainer.innerHTML = '';
-
+/*
                 // Create and append the header for the list
                 const header = document.createElement('h3');
                 header.textContent = 'Current Timers';
                 listContainer.appendChild(header);
-
+*/
                 // Create a list element for each timer
                 const ul = document.createElement('ul');
                 timers.forEach(timer => {
@@ -230,7 +230,7 @@
                 ctx.lineWidth = 1;
 
                 // Calculate the vertical position for the labels
-                const labelY = intensityToY(-5);
+                const labelY = intensityToY(-6);
 
                 for (let i = 1; i < 24; i++) { // Exclude 0:00 and 24:00
                     const x = (i / 24) * width; // X position for the hour line
@@ -246,7 +246,6 @@
                     ctx.fillStyle = '#000'; // Black color for the text
                     ctx.fillText(labelText, x - textWidth / 2, labelY); // Center the text horizontally and position vertically
                 }
-
 
                 // Draw intensity grid lines (horizontal)
                 const intensityGridStep = 10;
