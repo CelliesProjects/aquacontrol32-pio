@@ -132,6 +132,11 @@ static void showTemp(const float temperature)
 
 }
 
+void showIP(const char *ip)
+{
+    lcd.drawCenterString(ip, lcd.width() >> 1, 2, &DejaVu18);    
+}
+
 void lcdTask(void *parameter)
 {
     lcd.init();
@@ -154,9 +159,14 @@ void lcdTask(void *parameter)
             case lcdMessageType::UPDATE_LIGHTS:
                 updateLights();
                 break;
-
+/*
             case lcdMessageType::MOON_PHASE:
                 showMoon(msg.float1, msg.int1);
+                break;
+*/
+
+            case lcdMessageType::SHOW_IP:
+                showIP(msg.str);
                 break;
 
             case lcdMessageType::TEMPERATURE:

@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AquaControl timer editor</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #status {
+            margin: 0;
+        }
+
+        #actionButtons button,
+        #channelButtons button {
+            margin: 5px;
+            padding: 5px 15px;
+        }
+
+        canvas {
+            border: 1px solid #ccc;
+            margin-top: 5px;
+            width: 90%;
+            height: 300px;
+            max-width: 1200px;
+            min-width: 600px;
+        }
+
+        #contextMenu {
+            position: absolute;
+            display: none;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            padding: 8px;
+            z-index: 1000;
+        }
+
+        #contextMenu button {
+            display: block;
+            width: 100%;
+            border: none;
+            background: none;
+            text-align: left;
+            padding: 8px;
+            cursor: pointer;
+        }
+
+        #contextMenu button:hover {
+            background-color: #f0f0f0;
+        }
+
+        #tooltip {
+            position: absolute;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 5px;
+            border-radius: 5px;
+            font-size: 12px;
+            display: none;
+            /* Hidden by default */
+            pointer-events: none;
+            /* Prevent interaction with the tooltip */
+            transition: opacity 0.2s ease-in-out;
+            /* Smooth fade-in and fade-out */
+        }
+
+        #timersList {
+            border: 1px solid #ccc;
+            margin-top: 5px;
+            width: 90%;
+            max-width: 1200px;
+            min-width: 600px;
+            height: 200px;
+            overflow-y: scroll;
+        }
+    </style>
+</head>
+
+<script>
+    let channelTimers = [
+        { time: 0, intensity: 0 },
+        { time: 86400, intensity: 0 } // Mirrored from 0,0
+    ];
+
+    let currentChannel = 0;
+
+    const uploadTimers = (channel) => {
+        if (!confirm("Do you want to proceed?"))
+            return;
+
+        let csvData = '';
+        channelTimers.forEach(timer => {
+            csvData += `${timer.time},${timer.intensity}\n`;
+        });
+
+        fetch(`/upload?channel=${channel}`, {
+            method: 'POST',
+            body: csvData,
+            headers: {
+                'Content-Type': 'text/plain'
+            }
+        })
+            .then(response => {
+                if (response.ok) {
+                    alert(`Channel ${channel} timers uploaded successfully!`);
+                } else {
+                    response.text().then(text => {
+                        alert(`Failed to upload timers: ${text}`);
+                    });
+                }
+            })
+            .catch(error => {
+                alert(`Error uploading timers: ${error.message}`);
+            });
+    };
+
+    const changeChannel = (channel) => {
+        history.replaceState(null, "", `?channel=${channel}`);
+        location.reload();
+    };
+</script>
+
+<body>
+    <div>
+        <p id="status">waiting for channel data...</p>
+    </div>
+    <div id="channelButtons">
+        <button onclick="changeChannel(0)">Channel 0</button>
+        <button onclick="changeChannel(1)">Channel 1</button>
+        <button onclick="changeChannel(2)">Channel 2</button>
+        <button onclick="changeChannel(3)">Channel 3</button>
+        <button onclick="changeChannel(4)">Channel 4</button>
+    </div>
+    <div id="actionButtons">
+        <button id="reloadButton">Reload Timers</button>
+        <button id="clearButton">Clear Timers</button>
+        <button onclick="uploadTimers(currentChannel)">Upload Timers</button>
+        <button onclick="window.location = '/'">To the index</button>
+    </div>
+    <canvas id="timelineCanvas"></canvas>
+    <div id="timersList"></div>
+    <div id="contextMenu">
+        <button id="deletePoint">Delete Timer</button>
+    </div>
+    <div id="tooltip"></div>
+    <script>
+        (function () {
+            const canvas = document.getElementById('timelineCanvas');
+            const ctx = canvas.getContext('2d');
+            const contextMenu = document.getElementById('contextMenu');
+            const deletePointButton = document.getElementById('deletePoint');
+            const tooltip = document.getElementById('tooltip');
+
+            let draggingPoint = null;
+            let rightClickedPoint = null;
+            const pointRadius = 8; // Increased radius for easier clicks
+
+            const displayTimersList = () => {
+                // Get the container where the list will be displayed
+                const listContainer = document.getElementById('timersList');
+
+                // Get the current list of timers (exclude the 24:00 timer, which is a copy)
+                const timers = channelTimers.filter(timer => timer.time !== 86400); // Exclude the 24:00 timer
+
+                // Clear any existing content in the list container
+                listContainer.innerHTML = '';
+/*
+                // Create and append the header for the list
+                const header = document.createElement('h3');
+                header.textContent = 'Current Timers';
+                listContainer.appendChild(header);
+*/
+                // Create a list element for each timer
+                const ul = document.createElement('ul');
+                timers.forEach(timer => {
+                    const li = document.createElement('li');
+                    li.textContent = `Time: ${formatTime(timer.time)} | Intensity: ${timer.intensity}%`;
+                    ul.appendChild(li);
+                });
+
+                listContainer.appendChild(ul);
+            };
+
+            const redrawCanvas = () => {
+                const rect = canvas.getBoundingClientRect();
+                canvas.width = rect.width;
+                canvas.height = rect.height; // Fixed height from CSS
+                drawTimeline();
+            };
+
+            // Buffer area height (top and bottom)
+            const bufferHeight = 20;
+
+            const timeToX = time => (time / 86400) * canvas.width;
+            const intensityToY = intensity => {
+                if (intensity === 0) return canvas.height - bufferHeight; // Map 0% to bottom buffer area
+                if (intensity === 100) return bufferHeight; // Map 100% to top buffer area
+                return canvas.height - (intensity / 100) * (canvas.height - 2 * bufferHeight) - bufferHeight;
+            };
+            const xToTime = x => Math.round((x / canvas.width) * 86400 / 60) * 60; // Snap to minutes
+            const yToIntensity = y => {
+                if (y <= bufferHeight) return 100; // Top buffer area (100%)
+                if (y >= canvas.height - bufferHeight) return 0; // Bottom buffer area (0%)
+                return Math.round(100 - ((y - bufferHeight) / (canvas.height - 2 * bufferHeight)) * 100);
+            };
+
+            const formatTime = time => {
+                const hours = Math.floor(time / 3600);
+                const minutes = Math.floor((time % 3600) / 60);
+                return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+            };
+
+            const drawTimeline = () => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                const width = canvas.width;
+                const height = canvas.height;
+
+                // Draw background grid
+                ctx.strokeStyle = '#ddd';
+                ctx.lineWidth = 1;
+
+                // Calculate the vertical position for the labels
+                const labelY = intensityToY(-6);
+
+                for (let i = 1; i < 24; i++) { // Exclude 0:00 and 24:00
+                    const x = (i / 24) * width; // X position for the hour line
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, height);
+                    ctx.stroke();
+
+                    // Draw the hour labels centered on the grid lines
+                    const labelText = `${i}h`;
+                    ctx.font = '12px Arial';
+                    const textWidth = ctx.measureText(labelText).width; // Calculate the width of the text
+                    ctx.fillStyle = '#000'; // Black color for the text
+                    ctx.fillText(labelText, x - textWidth / 2, labelY); // Center the text horizontally and position vertically
+                }
+
+                // Draw intensity grid lines (horizontal)
+                const intensityGridStep = 10;
+                for (let i = 0; i <= 100; i += intensityGridStep) {
+                    const y = intensityToY(i);
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(width, y);
+                    ctx.strokeStyle = '#ddd'; // Light gray color for grid lines
+                    ctx.stroke();
+                }
+
+                // Draw percentage values for 0%, 50%, 100% at three times (0:00-1:00, 12:00, 23:00-24:00)
+                const percentages = [0, 50, 100]; // The percentage values
+
+                // Define the time positions where we want the percentages
+                const times = [
+                    { start: 0, end: 3600 },    // Between 0:00 and 1:00
+                    { start: 43200, end: 43200 }, // At 12:00 (centered)
+                    { start: 82800, end: 86400 } // Between 23:00 and 24:00
+                ];
+
+                // Define font size explicitly
+                const fontSize = 12; // Set font size in pixels
+                ctx.font = `${fontSize}px Arial`;
+
+                // Use the defined font size as the height
+                const fontHeight = fontSize;
+
+                percentages.forEach((percentage) => {
+                    times.forEach((timeRange) => {
+                        let x;
+                        if (timeRange.start === timeRange.end) {
+                            // For single times like 12:00, directly use the exact position
+                            x = timeToX(timeRange.start);
+                        } else {
+                            // For ranges (e.g., 0:00-1:00, 23:00-24:00), find the center
+                            x = timeToX(timeRange.start + (timeRange.end - timeRange.start) / 2);
+                        }
+
+                        const y = intensityToY(percentage); // Calculate y position based on the intensity percentage
+                        const text = `${percentage}%`;
+                        const textWidth = ctx.measureText(text).width;
+
+                        // Center text horizontally and vertically on the line
+                        ctx.fillStyle = '#000'; // Black color for text
+                        ctx.fillText(text, x - textWidth / 2, y + fontHeight / 2); // Center horizontally and vertically
+                    });
+                });
+
+                // Draw timeline
+                ctx.strokeStyle = '#0077cc';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                channelTimers.forEach((timer, index) => {
+                    const x = timeToX(timer.time);
+                    const y = intensityToY(timer.intensity);
+                    if (index === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                });
+                ctx.stroke();
+
+                // Draw points
+                ctx.fillStyle = '#0077cc';
+                channelTimers.forEach((timer, index) => {
+                    if (index === channelTimers.length - 1) return; // Skip the last (mirrored) timer
+                    const x = timeToX(timer.time);
+                    const y = intensityToY(timer.intensity);
+                    ctx.beginPath();
+                    ctx.arc(x, y, pointRadius, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+                displayTimersList();
+            };
+
+            const findPointAt = (x, y) => {
+                return channelTimers.find((timer, index) => {
+                    if (index === channelTimers.length - 1) return false; // Skip the last (mirrored) timer
+                    const timerX = timeToX(timer.time);
+                    const timerY = intensityToY(timer.intensity);
+                    return Math.hypot(timerX - x, timerY - y) < pointRadius;
+                });
+            };
+
+            const addTimer = (x, y) => {
+                const time = xToTime(x);
+                const intensity = yToIntensity(y);
+
+                if (time <= 60 || time >= 86400 - 60) return; // Prevent adding too close to bounds
+
+                // Check for duplicate times
+                if (channelTimers.some(timer => timer.time === time)) {
+                    alert(`A timer already exists at ${formatTime(time)}. Please choose a different time.`);
+                    return; // Prevent adding a duplicate timer
+                }
+
+                const newTimer = { time, intensity }; // Create the new timer
+                channelTimers.push(newTimer);
+                channelTimers.sort((a, b) => a.time - b.time); // Keep timers ordered
+
+                draggingPoint = newTimer; // Immediately set the new timer as the dragging point
+                drawTimeline(); // Redraw the timeline to reflect the new point
+            };
+
+            const startDragging = (x, y) => {
+                draggingPoint = findPointAt(x, y);
+            };
+
+            const dragPoint = (x, y) => {
+                if (draggingPoint) {
+                    // For the first point (00:00), allow dragging only the intensity
+                    if (draggingPoint.time === 0) {
+                        const newIntensity = Math.max(0, Math.min(100, yToIntensity(y)));
+                        draggingPoint.intensity = newIntensity;
+
+                        // Ensure the 24:00 timer mirrors the 00:00 timer
+                        const mirroredTimer = channelTimers.find(timer => timer.time === 86400);
+                        if (mirroredTimer) {
+                            mirroredTimer.intensity = newIntensity; // Mirror intensity
+                        }
+
+                        drawTimeline();
+                        displayTimersList(); // Refresh the list to reflect the mirrored timer
+                    } else {
+                        // For other points, allow both time and intensity dragging
+                        const newTime = Math.max(60, Math.min(86400 - 60, xToTime(x)));
+                        const newIntensity = Math.max(0, Math.min(100, yToIntensity(y)));
+
+                        // Check if the new time conflicts with any existing timer
+                        const conflictingTimer = channelTimers.find(timer => timer.time === newTime && timer !== draggingPoint);
+
+                        if (conflictingTimer) {
+                            drawTimeline(newTime, true); // Handle conflicts (this logic should be inside drawTimeline)
+                        } else {
+                            // Continue with the drag and no conflict
+                            draggingPoint.time = newTime;
+                            draggingPoint.intensity = newIntensity;
+
+                            // Ensure timers are sorted during dragging
+                            channelTimers.sort((a, b) => a.time - b.time);
+                            drawTimeline(); // Redraw the timeline with the updated position
+                            displayTimersList();
+                        }
+                    }
+                }
+            };
+
+            const stopDragging = () => {
+                if (draggingPoint) {
+                    // Check if there is a timer at the same time
+                    const existingPoint = channelTimers.find(timer => timer.time === draggingPoint.time);
+
+                    if (existingPoint) {
+                        // If the same time exists, replace the old timer with the dragged one
+                        const index = channelTimers.indexOf(existingPoint);
+                        if (index !== -1) {
+                            channelTimers[index] = draggingPoint; // Replace the old timer with the dragged one
+                        }
+                    } else {
+                        // If no existing timer at that time, just add the new one
+                        channelTimers.push(draggingPoint);
+                        channelTimers.sort((a, b) => a.time - b.time); // Keep the array sorted by time
+                    }
+
+                    draggingPoint = null; // End dragging
+                    drawTimeline(); // Redraw the timeline after update
+                    displayTimersList();
+                }
+            };
+
+            const showContextMenu = (x, y) => {
+                const time = formatTime(rightClickedPoint.time); // Get the time of the right-clicked timer
+
+                // Only allow deletion if it's not the first timer
+                const deleteButton = (rightClickedPoint.time === 0)
+                    ? `<button id="cancelPoint">Cancel</button>`
+                    : `<button id="deletePoint">Delete Timer at ${time}</button>`;
+
+                contextMenu.innerHTML = `${deleteButton}<button id="cancelPoint">Cancel</button>`;
+                contextMenu.style.left = `${x}px`;
+                contextMenu.style.top = `${y}px`;
+                contextMenu.style.display = 'block';
+            };
+
+            contextMenu.addEventListener('click', (event) => {
+                if (event.target.id === 'deletePoint') {
+                    if (rightClickedPoint) {
+                        // Check if it's the first timer (00:00)
+                        if (rightClickedPoint.time === 0) {
+                            return;
+                        } else {
+                            const index = channelTimers.indexOf(rightClickedPoint);
+                            if (index !== -1) {
+                                channelTimers.splice(index, 1); // Remove the timer from the array
+                                drawTimeline(); // Redraw the timeline after deletion
+                            }
+                        }
+                    }
+                    hideContextMenu();
+                } else if (event.target.id === 'cancelPoint') {
+                    hideContextMenu(); // Close the menu if "Cancel" is clicked
+                }
+            });
+
+            const hideContextMenu = () => {
+                contextMenu.style.display = 'none';
+            };
+
+            const updateTooltip = (x, y) => {
+                const time = xToTime(x); // Convert x-coordinate to time
+                const intensity = yToIntensity(y); // Convert y-coordinate to intensity
+                tooltip.textContent = `Time: ${formatTime(time)} | Intensity: ${intensity}%`; // Format and display time and intensity
+                tooltip.style.display = 'block'; // Ensure tooltip is visible
+
+                // Get the canvas position relative to the viewport
+                const rect = canvas.getBoundingClientRect();
+
+                // Position the tooltip inside the canvas, keeping the offset
+                tooltip.style.left = `${rect.left + x + 10}px`; // Adjust with offset as needed
+                tooltip.style.top = `${rect.top + y + 10}px`;   // Adjust with offset as needed
+            };
+
+            canvas.addEventListener('mousedown', (event) => {
+                if (event.button === 2) return; // Right-click, skip default behavior
+                const rect = canvas.getBoundingClientRect();
+                const x = event.clientX - rect.left;
+                const y = event.clientY - rect.top;
+
+                if (findPointAt(x, y)) {
+                    startDragging(x, y);
+                } else {
+                    addTimer(x, y);
+                    updateTooltip(x, y); // Show tooltip when adding a timer
+                }
+            });
+
+            canvas.addEventListener('mousemove', (event) => {
+                const rect = canvas.getBoundingClientRect();
+                const x = event.clientX - rect.left;
+                const y = event.clientY - rect.top;
+
+                // Update tooltip position based on mouse movement
+                tooltip.style.left = `${event.clientX + 10}px`;  // 10px offset for spacing
+                tooltip.style.top = `${event.clientY + 10}px`;   // 10px offset for spacing
+
+                // Update tooltip content and visibility
+                updateTooltip(x, y); // Always update the tooltip
+
+                // If dragging, update the dragged point
+                if (draggingPoint) {
+                    dragPoint(x, y);
+                }
+            });
+
+            canvas.addEventListener('mouseup', stopDragging);
+
+            // Show the tooltip when entering the canvas
+            canvas.addEventListener('mouseenter', () => {
+                tooltip.style.display = 'block'; // Show tooltip
+            });
+
+            // Hide the tooltip when leaving the canvas
+            canvas.addEventListener('mouseleave', () => {
+                tooltip.style.display = 'none'; // Hide tooltip
+            });
+
+            canvas.addEventListener('contextmenu', (event) => {
+                event.preventDefault();
+                const rect = canvas.getBoundingClientRect();
+                const x = event.clientX - rect.left;
+                const y = event.clientY - rect.top;
+                rightClickedPoint = findPointAt(x, y);
+
+                if (rightClickedPoint && rightClickedPoint.time !== 0) { // Don't show context menu for first timer
+                    showContextMenu(event.clientX, event.clientY);
+                }
+            });
+
+            document.addEventListener('click', (event) => {
+                if (event.target !== contextMenu && !contextMenu.contains(event.target)) {
+                    hideContextMenu();
+                }
+            });
+
+            window.addEventListener('resize', redrawCanvas);
+
+            const downloadTimers = (channel) => {
+                fetch(`/timers?channel=${channel}`)
+                    .then(response => {
+                        if (!response.ok) {
+                            redrawCanvas();
+                            throw new Error(`Failed to fetch timers: ${response.statusText}`);
+                        }
+                        return response.text();
+                    })
+                    .then(text => {
+                        channelTimers.length = 0; // Clear existing timers
+                        text.trim().split('\n').forEach(line => {
+                            const [time, intensity] = line.split(',').map(Number);
+                            if (!isNaN(time) && !isNaN(intensity))
+                                channelTimers.push({ time, intensity });
+                        });
+                        console.log(`Channel ${channel} timers downloaded:`, channelTimers);
+                        document.getElementById('status').innerHTML = `now editing channel ${channel}`;
+                        redrawCanvas();
+                    })
+                    .catch(error => {
+                        console.error("Error downloading timers:", error);
+                        alert(`Error downloading timers: ${error.message}`);
+                    });
+            };
+
+
+            document.getElementById("reloadButton").addEventListener("click", function () {
+                if (confirm("Do you want to proceed?"))
+                    downloadTimers(currentChannel);
+            });
+
+            document.getElementById("clearButton").addEventListener("click", function () {
+                if (confirm("Do you want to proceed?")) {
+                    channelTimers = [
+                        { time: 0, intensity: 0 },
+                        { time: 86400, intensity: 0 } // Mirrored from 0,0
+                    ];
+                    redrawCanvas();
+                }
+            });
+
+            document.addEventListener("DOMContentLoaded", function () {
+                const urlParams = new URLSearchParams(window.location.search);
+
+                if (urlParams.has('channel')) {
+                    currentChannel = Number(urlParams.get('channel'));
+                }
+                else {
+                    currentChannel = 0;
+                    alert("no channel requested. defaulting to channel 0");
+                }
+
+                if (isNaN(currentChannel) || currentChannel < 0 || currentChannel > 4) {
+                    alert(`${urlParams.get('channel')} is an invalid value.\n\nEditing defaults to channel 0.\n\nClick OK to continue.`);
+                    currentChannel = 0;
+                }
+
+                const buttons = document.querySelectorAll("#channelButtons button");
+                buttons[currentChannel].disabled = true;
+
+                downloadTimers(currentChannel);
+            });
+        })();
+    </script>
+</body>
+
+</html>

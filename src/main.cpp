@@ -20,6 +20,8 @@ extern void dimmerTask(void *parameter);
 extern std::vector<lightTimer_t> channel[NUMBER_OF_CHANNELS];
 extern std::mutex channelMutex;
 
+extern void httpTask(void *parameter);
+
 static void startDimmerTask()
 {
     static TaskHandle_t dimmerTaskHandle = NULL;
@@ -46,6 +48,20 @@ static void ntpCb(void *cb_arg)
 {
     log_i("NTP synced");
     sntp_set_time_sync_notification_cb(NULL);
+
+    const BaseType_t result = xTaskCreate(httpTask,
+                                          NULL,
+                                          4096,
+                                          NULL,
+                                          tskIDLE_PRIORITY,
+                                          NULL);
+    if (result != pdPASS)
+    {
+        log_e("could not start httpTask. system halted!");
+        while (1)
+            delay(100);
+    }
+
     startDimmerTask();
 }
 
@@ -195,7 +211,7 @@ void setup(void)
     SPI.begin(SCK, MISO, MOSI);
     SPI.setHwCs(true);
 
-    if (!SD.begin(SS))
+    if (!SD.begin(SDCARD_SS))
         log_w("could not mount SD");
     else
     {
@@ -259,6 +275,13 @@ void setup(void)
 
     while (!WiFi.isConnected())
         delay(10);
+
+    {
+        lcdMessage_t msg;
+        msg.type = SHOW_IP;
+        snprintf(msg.str, sizeof(msg.str), "%s", WiFi.localIP().toString().c_str());
+        xQueueSend(lcdQueue, &msg, portMAX_DELAY);
+    }
 
     messageOnLcd("Syncing clock...");
 
