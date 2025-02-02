@@ -214,8 +214,8 @@
                 ctx.strokeStyle = '#ddd';
                 ctx.lineWidth = 1;
 
-                // Calculate the vertical position for the labels (centered between 0% and 10%)
-                const labelY = intensityToY(5); // Midway between 0% and 10% intensity
+                // Calculate the vertical position for the labels
+                const labelY = intensityToY(-5);
 
                 for (let i = 1; i < 24; i++) { // Exclude 0:00 and 24:00
                     const x = (i / 24) * width; // X position for the hour line
