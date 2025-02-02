@@ -45,7 +45,40 @@ void httpTask(void *parameter)
 
     generateETag(lastModified);
 
+    static PsychicHttpServer server;
+    static PsychicWebSocketHandler websocketHandler;
+
+    server.config.max_uri_handlers = 8;
+    server.config.max_open_sockets = 8;
+
     server.listen(80);
+
+    websocketHandler.onOpen(
+        [](PsychicWebSocketClient *client)
+        {
+            log_i("[socket] connection #%u connected from %s", client->socket(), client->remoteIP().toString());
+        });
+
+    websocketHandler.onClose(
+        [](PsychicWebSocketClient *client)
+        {
+            log_i("[socket] connection #%u closed from %s", client->socket(), client->remoteIP().toString());
+        });
+
+    websocketHandler.onFrame(
+        [](PsychicWebSocketRequest *request, httpd_ws_frame *frame)
+        {
+            log_i("received websocket frame: %s", reinterpret_cast<char *>(frame->payload));
+
+            String wsResponse = "recieved: \n";
+            wsResponse += reinterpret_cast<char *>(frame->payload);
+
+            return request->reply(wsResponse.c_str());
+        });
+
+    server.on("/websocket", HTTP_GET, &websocketHandler);
+
+    // HTTP
 
     server.on(
         "/", HTTP_GET, [](PsychicRequest *request)
@@ -182,6 +215,19 @@ void httpTask(void *parameter)
             return request->reply(404, TEXT_HTML, "<h1>FOUR OH FOUR NOT FOUND</h1>"); }
 
     );
+
+    // do something on every connection made
+    server.onOpen(
+        [](PsychicClient *client)
+        {
+            log_i("[http] connection #%u connected from %s", client->socket(), client->remoteIP().toString());
+        });
+
+    server.onClose(
+        [](PsychicClient *client)
+        {
+            log_i("[http] connection #%u closed from %s", client->socket(), client->remoteIP().toString());
+        });
 
     DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");
 

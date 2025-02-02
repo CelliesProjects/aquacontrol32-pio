@@ -10,7 +10,5 @@
 
 extern void messageOnLcd(const char *str);
 
-PsychicHttpServer server;
-
 #endif
 

@@ -46,11 +46,13 @@
     </div>
     <script>
         document.addEventListener("DOMContentLoaded", function () {
+
             document.querySelectorAll(".channel").forEach((div, index) => {
                 div.addEventListener("click", function () {
                     window.location.href = "/editor?channel=" + index;
                 });
             });
+
         });
     </script>
 </body>
