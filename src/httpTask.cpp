@@ -216,6 +216,13 @@ static void setupWebserverHandlers(PsychicHttpServer &server)
 
 void httpTask(void *parameter)
 {
+    if (!websocketQueue)
+    {
+        log_e("fatal error. No websocketqueue. system halted.");
+        while (1)
+            delay(100);
+    }
+
     time_t rawTime = time(NULL); // TODO: change this to compile time like in the feather player project
     const struct tm *timeinfo = gmtime(&rawTime);
 
@@ -241,6 +248,21 @@ void httpTask(void *parameter)
 
     while (1)
     {
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        static websocketMessage msg;
+        if (xQueueReceive(websocketQueue, &msg, portMAX_DELAY))
+        {
+            switch (msg.type)
+            {
+            case LIGHT_UPDATE:
+                log_v("light update msg received: %s", msg.str);
+                if (websocketHandler.count())
+                    websocketHandler.sendAll(msg.str);
+                break;
+
+            default:
+                break;
+            }
+            //delay(2);
+        }
     }
 }
