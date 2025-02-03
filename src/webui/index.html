@@ -52,6 +52,9 @@
         let ws;
 
         function createWebSocket() {
+            if (document.visibilityState === 'hidden')
+                return;
+
             if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
                 console.log("WebSocket already exists");
                 return;
