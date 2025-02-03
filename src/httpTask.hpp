@@ -8,9 +8,10 @@
 
 #include "lightTimer.h"
 
-extern void messageOnLcd(const char *str);
+extern std::vector<lightTimer_t> channel[NUMBER_OF_CHANNELS];
+extern std::mutex channelMutex;
 
-static char lastModified[30];
+extern void messageOnLcd(const char *str);
 
 #endif
 

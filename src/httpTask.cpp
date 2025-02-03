@@ -1,13 +1,12 @@
 #include "httpTask.hpp"
 
-extern std::vector<lightTimer_t> channel[NUMBER_OF_CHANNELS];
-extern std::mutex channelMutex;
+static constexpr char *TEXT_HTML = "text/html";
+static constexpr char *TEXT_PLAIN = "text/plain";
 
-constexpr char *TEXT_HTML = "text/html";
-constexpr char *TEXT_PLAIN = "text/plain";
+static constexpr char *IF_MODIFIED_SINCE = "If-Modified-Since";
+static constexpr char *IF_NONE_MATCH = "If-None-Match";
 
-constexpr char *IF_MODIFIED_SINCE = "If-Modified-Since";
-constexpr char *IF_NONE_MATCH = "If-None-Match";
+static char lastModified[30];
 
 static inline bool samePageIsCached(PsychicRequest *request, const char *date, const char *etag)
 {
