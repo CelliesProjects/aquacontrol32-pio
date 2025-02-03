@@ -10,5 +10,7 @@
 
 extern void messageOnLcd(const char *str);
 
+static char lastModified[30];
+
 #endif
 

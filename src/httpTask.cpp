@@ -35,24 +35,8 @@ static void generateETag(const char *date)
     snprintf(etagValue, sizeof(etagValue), "\"%" PRIX32 "\"", hash);
 }
 
-void httpTask(void *parameter)
+static void setupWebsocketHandler(PsychicWebSocketHandler &websocketHandler)
 {
-    time_t rawTime = time(NULL); // TODO: change this to compile time like in the feather player project
-    const struct tm *timeinfo = gmtime(&rawTime);
-
-    static char lastModified[30];
-    strftime(lastModified, sizeof(lastModified), "%a, %d %b %Y %X GMT", timeinfo);
-
-    generateETag(lastModified);
-
-    static PsychicHttpServer server;
-    static PsychicWebSocketHandler websocketHandler;
-
-    server.config.max_uri_handlers = 8;
-    server.config.max_open_sockets = 8;
-
-    server.listen(80);
-
     websocketHandler.onOpen(
         [](PsychicWebSocketClient *client)
         {
@@ -75,11 +59,10 @@ void httpTask(void *parameter)
 
             return request->reply(wsResponse.c_str());
         });
+}
 
-    server.on("/websocket", HTTP_GET, &websocketHandler);
-
-    // HTTP
-
+static void setupWebserverHandlers(PsychicHttpServer &server)
+{
     server.on(
         "/", HTTP_GET, [](PsychicRequest *request)
         {
@@ -216,7 +199,6 @@ void httpTask(void *parameter)
 
     );
 
-    
     if (false) // set to true to show every connection made
     {
         server.onOpen(
@@ -231,7 +213,29 @@ void httpTask(void *parameter)
                 log_i("[http] connection #%u closed", client->socket());
             });
     }
+}
 
+void httpTask(void *parameter)
+{
+    time_t rawTime = time(NULL); // TODO: change this to compile time like in the feather player project
+    const struct tm *timeinfo = gmtime(&rawTime);
+
+    strftime(lastModified, sizeof(lastModified), "%a, %d %b %Y %X GMT", timeinfo);
+
+    generateETag(lastModified);
+
+    static PsychicHttpServer server;
+    static PsychicWebSocketHandler websocketHandler;
+
+    server.config.max_uri_handlers = 10;
+    server.config.max_open_sockets = 8;
+
+    server.listen(80);
+
+    setupWebsocketHandler(websocketHandler);
+    server.on("/websocket", HTTP_GET, &websocketHandler);
+
+    setupWebserverHandlers(server);
     DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");
 
     log_i("HTTP server started at %s", WiFi.localIP().toString());
