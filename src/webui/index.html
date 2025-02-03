@@ -53,7 +53,7 @@
 
         function createWebSocket() {
             if (ws && ws.readyState !== WebSocket.CLOSED) {
-                console.log("WebSocket already exists, skipping creation.");
+                console.log("WebSocket already exists");
                 return;
             }
 
