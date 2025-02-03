@@ -107,7 +107,7 @@ void dimmerTask(void *parameter)
         {
             websocketMessage msg;
             msg.type = LIGHT_UPDATE;
-            snprintf(msg.str, sizeof(msg.str), "%f\n%f\n%f\n%f\n%f",
+            snprintf(msg.str, sizeof(msg.str), "LIGHT\n%f\n%f\n%f\n%f\n%f\n",
                      currentPercentage[0],
                      currentPercentage[1],
                      currentPercentage[2],

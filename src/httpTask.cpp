@@ -259,10 +259,15 @@ void httpTask(void *parameter)
                     websocketHandler.sendAll(msg.str);
                 break;
 
+            case TEMPERATURE_UPDATE:
+                log_v("temperature update msg received: %s", msg.str);
+                if (websocketHandler.count())
+                    websocketHandler.sendAll(msg.str);
+                break;                
+
             default:
                 break;
             }
-            //delay(2);
         }
     }
 }

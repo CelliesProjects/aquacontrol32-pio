@@ -14,6 +14,14 @@ static bool updateTemperature(float temperatureC, float &lastTemperatureC)
     return result == pdTRUE;
 }
 
+void updateWebsocket(const float temp)
+{
+    websocketMessage msg;
+    msg.type = TEMPERATURE_UPDATE;
+    snprintf(msg.str, sizeof(msg.str), "TEMPERATURE\n%f\n", temp);
+    xQueueSend(websocketQueue, &msg, portMAX_DELAY);
+}
+
 void sensorTask(void *parameter)
 {
     pinMode(ONE_WIRE_PIN, INPUT_PULLUP);
@@ -56,9 +64,13 @@ void sensorTask(void *parameter)
         {
             errorCount = 0;
 
-            if (fabs(temperatureC - lastTemperatureC) > TEMPERATURE_THRESHOLD &&
-                !updateTemperature(temperatureC, lastTemperatureC))
-                log_w("Dropped temperature update");
+            if (fabs(temperatureC - lastTemperatureC) > TEMPERATURE_THRESHOLD)
+            {
+                if (!updateTemperature(temperatureC, lastTemperatureC))
+                    log_w("Dropped temperature update");
+
+                updateWebsocket(temperatureC);
+            }
         }
     }
 }
