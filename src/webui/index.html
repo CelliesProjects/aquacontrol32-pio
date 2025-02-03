@@ -52,6 +52,11 @@
         let ws;
 
         function createWebSocket() {
+            if (ws && ws.readyState !== WebSocket.CLOSED) {
+                console.log("WebSocket already exists, skipping creation.");
+                return;
+            }
+
             ws = new ReconnectingWebSocket("ws://" + window.location.host + "/websocket");
             console.log("ws://" + window.location.host + "/websocket");
 
