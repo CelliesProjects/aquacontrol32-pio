@@ -66,9 +66,10 @@
             });
 
             ws.addEventListener('close', () => {
-                setTimeout(() => {
-                    if (!ws || ws.readyState === WebSocket.CLOSED) createWebSocket();
-                }, 500); // Small delay to avoid immediate reconnect issues
+                if (ws) {
+                    ws = null; // Ensure a fresh instance
+                    setTimeout(createWebSocket, 500); // Delayed reconnect
+                }
             });
 
             ws.addEventListener('message', (event) => {
