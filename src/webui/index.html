@@ -52,7 +52,7 @@
         let ws;
 
         function createWebSocket() {
-            if (ws && ws.readyState !== WebSocket.CLOSED) {
+            if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
                 console.log("WebSocket already exists");
                 return;
             }
@@ -66,8 +66,9 @@
             });
 
             ws.addEventListener('close', () => {
-                document.getElementById('connection-status').textContent = 'Disconnected';
-                console.log('WebSocket disconnected');
+                setTimeout(() => {
+                    if (!ws || ws.readyState === WebSocket.CLOSED) createWebSocket();
+                }, 500); // Small delay to avoid immediate reconnect issues
             });
 
             ws.addEventListener('message', (event) => {
