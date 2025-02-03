@@ -62,7 +62,7 @@ void httpTask(void *parameter)
     websocketHandler.onClose(
         [](PsychicWebSocketClient *client)
         {
-            log_i("[socket] connection #%u closed from %s", client->socket(), client->remoteIP().toString());
+            log_i("[socket] connection #%u closed", client->socket());
         });
 
     websocketHandler.onFrame(
@@ -216,18 +216,21 @@ void httpTask(void *parameter)
 
     );
 
-    // do something on every connection made
-    server.onOpen(
-        [](PsychicClient *client)
-        {
-            log_i("[http] connection #%u connected from %s", client->socket(), client->remoteIP().toString());
-        });
+    
+    if (false) // set to true to show every connection made
+    {
+        server.onOpen(
+            [](PsychicClient *client)
+            {
+                log_i("[http] connection #%u connected from %s", client->socket(), client->remoteIP().toString());
+            });
 
-    server.onClose(
-        [](PsychicClient *client)
-        {
-            log_i("[http] connection #%u closed from %s", client->socket(), client->remoteIP().toString());
-        });
+        server.onClose(
+            [](PsychicClient *client)
+            {
+                log_i("[http] connection #%u closed", client->socket());
+            });
+    }
 
     DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");
 
