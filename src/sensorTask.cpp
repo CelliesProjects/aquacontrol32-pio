@@ -49,7 +49,7 @@ void sensorTask(void *parameter)
             log_w("Sensor disconnected or error reading temperature.");
 
             if (++errorCount >= MAX_ERROR_COUNT)
-            {               
+            {
                 updateDisplay(DEVICE_DISCONNECTED_C);
                 updateWebsocket(DEVICE_DISCONNECTED_C);
 
