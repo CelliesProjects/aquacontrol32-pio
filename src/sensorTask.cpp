@@ -66,6 +66,7 @@ void sensorTask(void *parameter)
             {
                 updateDisplay(temperatureC);
                 updateWebsocket(temperatureC);
+                lastTemperatureC = temperatureC;
             }
         }
     }
