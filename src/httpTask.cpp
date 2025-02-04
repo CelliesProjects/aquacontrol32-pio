@@ -106,24 +106,31 @@ static void setupWebserverHandlers(PsychicHttpServer &server)
     server.on(
         "/timers", HTTP_GET, [](PsychicRequest *request)
         {
-            if (!request->hasParam("channel"))
-                return request->reply(400, TEXT_PLAIN, "No channel parameter provided");
+        if (!request->hasParam("channel"))
+            return request->reply(400, TEXT_PLAIN, "No channel parameter provided");
 
-            const uint8_t choice = strtol(request->getParam("channel")->value().c_str(), NULL, 10);
+        const uint8_t choice = strtol(request->getParam("channel")->value().c_str(), NULL, 10);
 
-            if (choice >= NUMBER_OF_CHANNELS)
-                return request->reply(400, TEXT_PLAIN, "Valid channels are 0-4");
+        if (choice >= NUMBER_OF_CHANNELS)
+            return request->reply(400, TEXT_PLAIN, "Valid channels are 0-4");
 
-            String content;
-            content.reserve(256);
+        String content;
+        content.reserve(256);
 
-            {
-                std::lock_guard<std::mutex> lock(channelMutex);
-                for (auto &timer : channel[choice])
-                    content += String(timer.time) + "," + String(timer.percentage) + "\n";
-            }
+        {
+            std::lock_guard<std::mutex> lock(channelMutex);
+            for (auto &timer : channel[choice])
+                content += String(timer.time) + "," + String(timer.percentage) + "\n";
+        }
 
-            return request->reply(200, TEXT_PLAIN, content.c_str()); }
+        PsychicStreamResponse response(request, TEXT_PLAIN);
+
+        response.addHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+        response.addHeader("Pragma", "no-cache");
+        response.addHeader("Expires", "0");
+
+        response.setContent(content.c_str());
+        return response.send(); }
 
     );
 
