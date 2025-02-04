@@ -3,6 +3,9 @@
 static constexpr char *TEXT_HTML = "text/html";
 static constexpr char *TEXT_PLAIN = "text/plain";
 
+static constexpr char *CONTENT_ENCODING = "Content-Encoding";
+static constexpr char *GZIP = "gzip";
+
 static constexpr char *IF_MODIFIED_SINCE = "If-Modified-Since";
 static constexpr char *IF_NONE_MATCH = "If-None-Match";
 
@@ -68,11 +71,12 @@ static void setupWebserverHandlers(PsychicHttpServer &server)
             if (samePageIsCached(request, lastModified, etagValue))
                 return request->reply(304);
 
-            extern const uint8_t index_start[] asm("_binary_src_webui_index_html_start");
-            extern const uint8_t index_end[] asm("_binary_src_webui_index_html_end");
+            extern const uint8_t index_start[] asm("_binary_src_webui_index_html_gz_start");
+            extern const uint8_t index_end[] asm("_binary_src_webui_index_html_gz_end");
 
             PsychicResponse response = PsychicResponse(request);
             addStaticContentHeaders(response, lastModified, etagValue);
+            response.addHeader(CONTENT_ENCODING, GZIP);
             response.setContentType(TEXT_HTML);
             const size_t size = index_end - index_start;
             response.setContent(index_start, size);
@@ -86,11 +90,12 @@ static void setupWebserverHandlers(PsychicHttpServer &server)
             if (samePageIsCached(request, lastModified, etagValue))
                 return request->reply(304);
 
-            extern const uint8_t editor_start[] asm("_binary_src_webui_editor_html_start");
-            extern const uint8_t editor_end[] asm("_binary_src_webui_editor_html_end");   
+            extern const uint8_t editor_start[] asm("_binary_src_webui_editor_html_gz_start");
+            extern const uint8_t editor_end[] asm("_binary_src_webui_editor_html_gz_end");   
 
             PsychicResponse response = PsychicResponse(request);
             addStaticContentHeaders(response, lastModified, etagValue);
+            response.addHeader(CONTENT_ENCODING, GZIP);
             response.setContentType(TEXT_HTML);
             const size_t size = editor_end - editor_start;
             response.setContent(editor_start, size);
@@ -263,7 +268,7 @@ void httpTask(void *parameter)
                 log_v("temperature update msg received: %s", msg.str);
                 if (websocketHandler.count())
                     websocketHandler.sendAll(msg.str);
-                break;                
+                break;
 
             default:
                 break;
