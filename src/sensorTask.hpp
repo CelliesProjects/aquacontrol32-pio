@@ -1,5 +1,5 @@
-#ifndef _SENSOR_TASK_
-#define _SENSOR_TASK_
+#ifndef _SENSOR_TASK_HPP_
+#define _SENSOR_TASK_HPP_
 
 #include <OneWire.h>
 #include <DallasTemperature.h>

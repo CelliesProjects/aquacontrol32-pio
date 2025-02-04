@@ -1,20 +1,14 @@
-#include <sensorTask.hpp>
+#include "sensorTask.hpp"
 
-static bool updateTemperature(float temperatureC, float &lastTemperatureC)
+static void updateDisplay(float temperatureC)
 {
     lcdMessage_t msg;
     msg.type = TEMPERATURE;
     msg.float1 = temperatureC;
-
-    const BaseType_t result = xQueueSend(lcdQueue, &msg, 0);
-
-    lastTemperatureC = result ? temperatureC : lastTemperatureC;
-
-    log_d("%s lcd temperature %.2f°C", result ? "Updated" : "Could not update", temperatureC);
-    return result == pdTRUE;
+    xQueueSend(lcdQueue, &msg, portMAX_DELAY);
 }
 
-void updateWebsocket(const float temp)
+static void updateWebsocket(const float temp)
 {
     websocketMessage msg;
     msg.type = TEMPERATURE_UPDATE;
@@ -55,8 +49,12 @@ void sensorTask(void *parameter)
             log_w("Sensor disconnected or error reading temperature.");
 
             if (++errorCount >= MAX_ERROR_COUNT)
-            {
+            {               
+                updateDisplay(DEVICE_DISCONNECTED_C);
+                updateWebsocket(DEVICE_DISCONNECTED_C);
+
                 log_e("Persistent sensor error after %d retries. Deleting task.", MAX_ERROR_COUNT);
+
                 vTaskDelete(NULL);
             }
         }
@@ -66,9 +64,7 @@ void sensorTask(void *parameter)
 
             if (fabs(temperatureC - lastTemperatureC) > TEMPERATURE_THRESHOLD)
             {
-                if (!updateTemperature(temperatureC, lastTemperatureC))
-                    log_w("Dropped temperature update");
-
+                updateDisplay(temperatureC);
                 updateWebsocket(temperatureC);
             }
         }
