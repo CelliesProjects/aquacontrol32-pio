@@ -276,9 +276,7 @@ void loadDefaultTimers()
             }
         }
         else
-        {
             log_w("Timer file %s not found!", DEFAULT_TIMERFILE);
-        }
 
         SD.end(); // Clean shutdown
         xSemaphoreGive(sdMutex);
