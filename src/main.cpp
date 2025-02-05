@@ -1,14 +1,19 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <SPI.h>
+#include <FS.h>
 #include <SD.h>
 #include <esp_sntp.h>
+#include "freertos/semphr.h"
 #include <vector>
 #include <mutex>
 
 #include "secrets.h"
 #include "lcdMessage.h"
 #include "lightTimer.h"
+
+static const char *DEFAULT_TIMERFILE = "/default.aqu";
+static SemaphoreHandle_t sdMutex;
 
 extern QueueHandle_t lcdQueue;
 extern void lcdTask(void *parameter);
@@ -119,6 +124,9 @@ static void parseTimerFile(File &file)
                 {
                     line = file.readStringUntil('\n');
                     currentLine++;
+                    if (line.isEmpty() && !file.available())
+                        break;
+
                     continue;
                 }
 
@@ -169,6 +177,8 @@ static void parseTimerFile(File &file)
 
                 line = file.readStringUntil('\n');
                 currentLine++;
+                if (line.isEmpty() && !file.available())
+                    break;
             }
         }
 
@@ -185,6 +195,96 @@ static void parseTimerFile(File &file)
     log_v("read %i lines", currentLine);
 }
 
+bool saveDefaultTimers()
+{
+    if (!sdMutex)
+    {
+        log_e("SD mutex not initialized!");
+        return false;
+    }
+
+    if (xSemaphoreTake(sdMutex, pdMS_TO_TICKS(1000)) == pdTRUE)
+    {
+        if (!SD.begin(SDCARD_SS))
+        {
+            xSemaphoreGive(sdMutex);
+            log_e("SD initialization failed!");
+            return false;
+        }
+        
+        File file = SD.open(DEFAULT_TIMERFILE, FILE_WRITE);
+        if (!file)
+        {
+            SD.end();
+            xSemaphoreGive(sdMutex);
+            log_e("Failed to open %s for writing", DEFAULT_TIMERFILE);
+            return false;
+        }
+
+        {
+            std::lock_guard<std::mutex> lock(channelMutex);
+
+            for (int i = 0; i < NUMBER_OF_CHANNELS; ++i)
+            {
+                file.printf("[%d]\n", i); // Write channel header
+                for (const auto &timer : channel[i])
+                    if (timer.time != 86400)
+                        file.printf("%d,%d\n", timer.time, timer.percentage);
+            }
+        }
+        file.flush();
+
+        file.close();
+        SD.end();
+
+        xSemaphoreGive(sdMutex);
+        log_i("Saved default timers to %s", DEFAULT_TIMERFILE);
+
+        return true;
+    }
+    else
+    {
+        log_e("SD write timeout!");
+        return false;
+    }
+}
+
+void loadDefaultTimers()
+{
+    if (!sdMutex)
+    {
+        log_e("SD mutex not initialized!");
+        return;
+    }
+
+    if (xSemaphoreTake(sdMutex, pdMS_TO_TICKS(1000)) == pdTRUE)
+    {
+        if (!SD.begin(SDCARD_SS))
+        {
+            xSemaphoreGive(sdMutex);
+            log_e("SD initialization failed!");
+            return;
+        }
+
+        if (SD.exists(DEFAULT_TIMERFILE))
+        {
+            File file = SD.open(DEFAULT_TIMERFILE);
+            if (file)
+            {
+                parseTimerFile(file);
+                file.close();
+            }
+        }
+        else
+            log_w("Timer file %s not found!", DEFAULT_TIMERFILE);
+
+        SD.end(); // Clean shutdown
+        xSemaphoreGive(sdMutex);
+    }
+    else
+        log_e("SD read timeout!");
+}
+
 void setup(void)
 {
     Serial.begin(115200);
@@ -194,6 +294,14 @@ void setup(void)
 #endif
 
     log_i("aquacontrol v2");
+
+    sdMutex = xSemaphoreCreateMutex();
+    if (!sdMutex)
+    {
+        log_e("Failed to create SD mutex! system halted!");
+        while (1)
+            delay(100);
+    }
 
     if (!lcdQueue)
     {
@@ -211,23 +319,7 @@ void setup(void)
     SPI.begin(SCK, MISO, MOSI);
     SPI.setHwCs(true);
 
-    if (!SD.begin(SDCARD_SS))
-        log_w("could not mount SD");
-    else
-    {
-        log_i("mounted SD");
-
-        const char *DEFAULT_TIMERFILE = {"/default.aqu"};
-        if (SD.exists(DEFAULT_TIMERFILE))
-        {
-            File file = SD.open(DEFAULT_TIMERFILE);
-            if (file)
-            {
-                parseTimerFile(file);
-                file.close();
-            }
-        }
-    }
+    loadDefaultTimers();
 
     log_i("ch 0: %i timers", channel[0].size());
     log_i("ch 1: %i timers", channel[1].size());

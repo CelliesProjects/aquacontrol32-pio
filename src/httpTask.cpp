@@ -215,7 +215,10 @@ static void setupWebserverHandlers(PsychicHttpServer &server)
 
             log_i("Cleared and added %i new timers to channel %i",channel[channelIndex].size(), channelIndex);
 
-            return request->reply(200, TEXT_PLAIN, "Timers updated successfully"); }
+            if (!saveDefaultTimers())
+                return request->reply(500, TEXT_PLAIN, "Could not save timers"); 
+
+            return request->reply(200, TEXT_PLAIN, "Timers updated and saved successfully"); }
 
     );
 
