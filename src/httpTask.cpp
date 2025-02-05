@@ -63,6 +63,28 @@ static void setupWebsocketHandler(PsychicWebSocketHandler &websocketHandler)
         });
 }
 
+static std::optional<uint8_t> getValidChannel(PsychicRequest *request)
+{
+    constexpr char *CHANNEL = "channel";
+
+    if (!request->hasParam(CHANNEL))
+    {
+        request->reply(400, TEXT_PLAIN, "No channel parameter provided");
+        return std::nullopt;
+    }
+
+    const String &channelStr = request->getParam(CHANNEL)->value();
+
+    // Ensure the string consists of a single digit between '0' and '4'
+    if (channelStr.length() != 1 || channelStr[0] < '0' || channelStr[0] > '4')
+    {
+        request->reply(400, TEXT_PLAIN, "Invalid channel parameter (must be a number 0-4)");
+        return std::nullopt;
+    }
+
+    return channelStr[0] - '0'; // Convert char to integer
+}
+
 static void setupWebserverHandlers(PsychicHttpServer &server)
 {
     server.on(
@@ -106,44 +128,37 @@ static void setupWebserverHandlers(PsychicHttpServer &server)
     server.on(
         "/timers", HTTP_GET, [](PsychicRequest *request)
         {
-        if (!request->hasParam("channel"))
-            return request->reply(400, TEXT_PLAIN, "No channel parameter provided");
+            auto choice = getValidChannel(request);
+            if (!choice) 
+                return ESP_OK;
 
-        const uint8_t choice = strtol(request->getParam("channel")->value().c_str(), NULL, 10);
+            String content;
+            content.reserve(256);
 
-        if (choice >= NUMBER_OF_CHANNELS)
-            return request->reply(400, TEXT_PLAIN, "Valid channels are 0-4");
+            uint8_t channelIndex = *choice;
+            {
+                std::lock_guard<std::mutex> lock(channelMutex);
+                for (auto &timer : channel[channelIndex])
+                    content += String(timer.time) + "," + String(timer.percentage) + "\n";
+            }
 
-        String content;
-        content.reserve(256);
+            PsychicStreamResponse response(request, TEXT_PLAIN);
 
-        {
-            std::lock_guard<std::mutex> lock(channelMutex);
-            for (auto &timer : channel[choice])
-                content += String(timer.time) + "," + String(timer.percentage) + "\n";
-        }
+            response.addHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+            response.addHeader("Pragma", "no-cache");
+            response.addHeader("Expires", "0");
 
-        PsychicStreamResponse response(request, TEXT_PLAIN);
-
-        response.addHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
-        response.addHeader("Pragma", "no-cache");
-        response.addHeader("Expires", "0");
-
-        response.setContent(content.c_str());
-        return response.send(); }
+            response.setContent(content.c_str());
+            return response.send(); }
 
     );
 
     server.on(
         "/upload", HTTP_POST, [](PsychicRequest *request)
         {
-            if (!request->hasParam("channel"))
-                return request->reply(400, TEXT_PLAIN, "No channel parameter provided");
-
-            const uint8_t choice = strtol(request->getParam("channel")->value().c_str(), NULL, 10);
-
-            if (choice >= NUMBER_OF_CHANNELS)
-                return request->reply(400, TEXT_PLAIN, "Valid channels are 0-4");
+            auto choice = getValidChannel(request);
+            if (!choice) 
+                return ESP_OK;
 
             String csvData = request->body();
 
@@ -189,14 +204,15 @@ static void setupWebserverHandlers(PsychicHttpServer &server)
                 return request->reply(400, TEXT_PLAIN, "Data sanity check failed");
             }
 
+            uint8_t channelIndex = *choice;
             {
                 std::lock_guard<std::mutex> lock(channelMutex);
-                channel[choice].clear();
+                channel[channelIndex].clear();
                 for (auto &timer : newTimers)
-                    channel[choice].push_back(timer);
+                    channel[channelIndex].push_back(timer);
             }
 
-            log_i("Cleared and added %i new timers to channel %i",channel[choice].size(), choice);
+            log_i("Cleared and added %i new timers to channel %i",channel[channelIndex].size(), choice);
 
             return request->reply(200, TEXT_PLAIN, "Timers updated successfully"); }
 

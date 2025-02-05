@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <mutex>
+#include <optional>
 
 #include <PsychicHttp.h>
 
