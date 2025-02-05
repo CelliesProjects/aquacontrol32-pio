@@ -3,6 +3,8 @@
 
 #include <Arduino.h>
 #include <WiFi.h>
+#include <FS.h>
+#include <SD.h>
 #include <mutex>
 #include <optional>
 
@@ -14,6 +16,8 @@
 extern std::vector<lightTimer_t> channel[NUMBER_OF_CHANNELS];
 extern std::mutex channelMutex;
 
+extern bool saveDefaultTimers();
+extern bool loadDefaultTimers();
 extern void messageOnLcd(const char *str);
 
 QueueHandle_t websocketQueue = xQueueCreate(6, sizeof(websocketMessage));
