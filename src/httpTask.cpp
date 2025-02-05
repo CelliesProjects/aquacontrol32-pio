@@ -1,13 +1,15 @@
 #include "httpTask.hpp"
 
-extern std::vector<lightTimer_t> channel[NUMBER_OF_CHANNELS];
-extern std::mutex channelMutex;
+static constexpr char *TEXT_HTML = "text/html";
+static constexpr char *TEXT_PLAIN = "text/plain";
 
-constexpr char *TEXT_HTML = "text/html";
-constexpr char *TEXT_PLAIN = "text/plain";
+static constexpr char *CONTENT_ENCODING = "Content-Encoding";
+static constexpr char *GZIP = "gzip";
 
-constexpr char *IF_MODIFIED_SINCE = "If-Modified-Since";
-constexpr char *IF_NONE_MATCH = "If-None-Match";
+static constexpr char *IF_MODIFIED_SINCE = "If-Modified-Since";
+static constexpr char *IF_NONE_MATCH = "If-None-Match";
+
+static char lastModified[30];
 
 static inline bool samePageIsCached(PsychicRequest *request, const char *date, const char *etag)
 {
@@ -35,29 +37,67 @@ static void generateETag(const char *date)
     snprintf(etagValue, sizeof(etagValue), "\"%" PRIX32 "\"", hash);
 }
 
-void httpTask(void *parameter)
+static void setupWebsocketHandler(PsychicWebSocketHandler &websocketHandler)
 {
-    time_t rawTime = time(NULL); // TODO: change this to compile time like in the feather player project
-    const struct tm *timeinfo = gmtime(&rawTime);
+    websocketHandler.onOpen(
+        [](PsychicWebSocketClient *client)
+        {
+            log_i("[socket] connection #%u connected from %s", client->socket(), client->remoteIP().toString());
+        });
 
-    static char lastModified[30];
-    strftime(lastModified, sizeof(lastModified), "%a, %d %b %Y %X GMT", timeinfo);
+    websocketHandler.onClose(
+        [](PsychicWebSocketClient *client)
+        {
+            log_i("[socket] connection #%u closed", client->socket());
+        });
 
-    generateETag(lastModified);
+    websocketHandler.onFrame(
+        [](PsychicWebSocketRequest *request, httpd_ws_frame *frame)
+        {
+            log_i("received websocket frame: %s", reinterpret_cast<char *>(frame->payload));
 
-    server.listen(80);
+            String wsResponse = "recieved: \n";
+            wsResponse += reinterpret_cast<char *>(frame->payload);
 
+            return request->reply(wsResponse.c_str());
+        });
+}
+
+static std::optional<uint8_t> validateChannel(PsychicRequest *request)
+{
+    constexpr char *CHANNEL = "channel";
+
+    if (!request->hasParam(CHANNEL))
+    {
+        request->reply(400, TEXT_PLAIN, "No channel parameter provided");
+        return std::nullopt;
+    }
+
+    const String &channelStr = request->getParam(CHANNEL)->value();
+
+    if (channelStr.length() != 1 || channelStr[0] < '0' || channelStr[0] > '4')
+    {
+        request->reply(400, TEXT_PLAIN, "Invalid channel parameter (must be a number 0-4)");
+        return std::nullopt;
+    }
+
+    return channelStr[0] - '0';
+}
+
+static void setupWebserverHandlers(PsychicHttpServer &server)
+{
     server.on(
         "/", HTTP_GET, [](PsychicRequest *request)
         {
             if (samePageIsCached(request, lastModified, etagValue))
                 return request->reply(304);
 
-            extern const uint8_t index_start[] asm("_binary_src_webui_index_html_start");
-            extern const uint8_t index_end[] asm("_binary_src_webui_index_html_end");
+            extern const uint8_t index_start[] asm("_binary_src_webui_index_html_gz_start");
+            extern const uint8_t index_end[] asm("_binary_src_webui_index_html_gz_end");
 
             PsychicResponse response = PsychicResponse(request);
             addStaticContentHeaders(response, lastModified, etagValue);
+            response.addHeader(CONTENT_ENCODING, GZIP);
             response.setContentType(TEXT_HTML);
             const size_t size = index_end - index_start;
             response.setContent(index_start, size);
@@ -71,11 +111,12 @@ void httpTask(void *parameter)
             if (samePageIsCached(request, lastModified, etagValue))
                 return request->reply(304);
 
-            extern const uint8_t editor_start[] asm("_binary_src_webui_editor_html_start");
-            extern const uint8_t editor_end[] asm("_binary_src_webui_editor_html_end");   
+            extern const uint8_t editor_start[] asm("_binary_src_webui_editor_html_gz_start");
+            extern const uint8_t editor_end[] asm("_binary_src_webui_editor_html_gz_end");   
 
             PsychicResponse response = PsychicResponse(request);
             addStaticContentHeaders(response, lastModified, etagValue);
+            response.addHeader(CONTENT_ENCODING, GZIP);
             response.setContentType(TEXT_HTML);
             const size_t size = editor_end - editor_start;
             response.setContent(editor_start, size);
@@ -86,37 +127,40 @@ void httpTask(void *parameter)
     server.on(
         "/timers", HTTP_GET, [](PsychicRequest *request)
         {
-            if (!request->hasParam("channel"))
-                return request->reply(400, TEXT_PLAIN, "No channel parameter provided");
+            auto validChannel = validateChannel(request);
+            if (!validChannel) 
+                return ESP_OK;
 
-            const uint8_t choice = strtol(request->getParam("channel")->value().c_str(), NULL, 10);
-
-            if (choice >= NUMBER_OF_CHANNELS)
-                return request->reply(400, TEXT_PLAIN, "Valid channels are 0-4");
+            uint8_t channelIndex = *validChannel;
 
             String content;
             content.reserve(256);
 
             {
                 std::lock_guard<std::mutex> lock(channelMutex);
-                for (auto &timer : channel[choice])
+                for (auto &timer : channel[channelIndex])
                     content += String(timer.time) + "," + String(timer.percentage) + "\n";
             }
 
-            return request->reply(200, TEXT_PLAIN, content.c_str()); }
+            PsychicStreamResponse response(request, TEXT_PLAIN);
+
+            response.addHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+            response.addHeader("Pragma", "no-cache");
+            response.addHeader("Expires", "0");
+
+            response.setContent(content.c_str());
+            return response.send(); }
 
     );
 
     server.on(
         "/upload", HTTP_POST, [](PsychicRequest *request)
         {
-            if (!request->hasParam("channel"))
-                return request->reply(400, TEXT_PLAIN, "No channel parameter provided");
+            auto validChannel = validateChannel(request);
+            if (!validChannel) 
+                return ESP_OK;
 
-            const uint8_t choice = strtol(request->getParam("channel")->value().c_str(), NULL, 10);
-
-            if (choice >= NUMBER_OF_CHANNELS)
-                return request->reply(400, TEXT_PLAIN, "Valid channels are 0-4");
+            const uint8_t channelIndex = *validChannel;
 
             String csvData = request->body();
 
@@ -124,7 +168,7 @@ void httpTask(void *parameter)
             int startIdx = 0;
             int endIdx = csvData.indexOf('\n');
 
-            log_d("Parsing timers for channel %i", choice);
+            log_d("Parsing timers for channel %i", channelIndex);
 
             while (endIdx != -1)
             {
@@ -147,7 +191,7 @@ void httpTask(void *parameter)
 
                     newTimers.push_back({time, percentage});
 
-                    log_v("Staging% 6i,% 4i for channel %i", time, percentage, choice);
+                    log_v("Staging% 6i,% 4i for channel %i", time, percentage, channelIndex);
                 }
 
                 startIdx = endIdx + 1;
@@ -164,12 +208,12 @@ void httpTask(void *parameter)
 
             {
                 std::lock_guard<std::mutex> lock(channelMutex);
-                channel[choice].clear();
+                channel[channelIndex].clear();
                 for (auto &timer : newTimers)
-                    channel[choice].push_back(timer);
+                    channel[channelIndex].push_back(timer);
             }
 
-            log_i("Cleared and added %i new timers to channel %i",channel[choice].size(), choice);
+            log_i("Cleared and added %i new timers to channel %i",channel[channelIndex].size(), channelIndex);
 
             return request->reply(200, TEXT_PLAIN, "Timers updated successfully"); }
 
@@ -183,12 +227,76 @@ void httpTask(void *parameter)
 
     );
 
+    if (false) // set to true to show every connection made
+    {
+        server.onOpen(
+            [](PsychicClient *client)
+            {
+                log_i("[http] connection #%u connected from %s", client->socket(), client->remoteIP().toString());
+            });
+
+        server.onClose(
+            [](PsychicClient *client)
+            {
+                log_i("[http] connection #%u closed", client->socket());
+            });
+    }
+}
+
+void httpTask(void *parameter)
+{
+    if (!websocketQueue)
+    {
+        log_e("fatal error. No websocketqueue. system halted.");
+        while (1)
+            delay(100);
+    }
+
+    time_t rawTime = time(NULL); // TODO: change this to compile time like in the feather player project
+    const struct tm *timeinfo = gmtime(&rawTime);
+
+    strftime(lastModified, sizeof(lastModified), "%a, %d %b %Y %X GMT", timeinfo);
+
+    generateETag(lastModified);
+
+    static PsychicHttpServer server;
+    static PsychicWebSocketHandler websocketHandler;
+
+    server.config.max_uri_handlers = 10;
+    server.config.max_open_sockets = 8;
+
+    server.listen(80);
+
+    setupWebsocketHandler(websocketHandler);
+    server.on("/websocket", HTTP_GET, &websocketHandler);
+
+    setupWebserverHandlers(server);
     DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");
 
     log_i("HTTP server started at %s", WiFi.localIP().toString());
 
     while (1)
     {
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        static websocketMessage msg;
+        if (xQueueReceive(websocketQueue, &msg, portMAX_DELAY))
+        {
+            switch (msg.type)
+            {
+            case LIGHT_UPDATE:
+                log_v("light update msg received: %s", msg.str);
+                if (websocketHandler.count())
+                    websocketHandler.sendAll(msg.str);
+                break;
+
+            case TEMPERATURE_UPDATE:
+                log_v("temperature update msg received: %s", msg.str);
+                if (websocketHandler.count())
+                    websocketHandler.sendAll(msg.str);
+                break;
+
+            default:
+                break;
+            }
+        }
     }
 }

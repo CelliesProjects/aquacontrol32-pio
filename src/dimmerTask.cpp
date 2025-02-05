@@ -100,6 +100,23 @@ void dimmerTask(void *parameter)
             }
         }
 
+        constexpr int REFRESHRATE_WEBSOCKET_HZ = 8;
+        constexpr int WS_WAIT_TIME = 1000 / REFRESHRATE_WEBSOCKET_HZ;
+        static unsigned long lastWebsocketRefresh = 0;
+        if (millis() - lastWebsocketRefresh >= WS_WAIT_TIME)
+        {
+            websocketMessage msg;
+            msg.type = LIGHT_UPDATE;
+            snprintf(msg.str, sizeof(msg.str), "LIGHT\n%f\n%f\n%f\n%f\n%f\n",
+                     currentPercentage[0],
+                     currentPercentage[1],
+                     currentPercentage[2],
+                     currentPercentage[3],
+                     currentPercentage[4]);
+            xQueueSend(websocketQueue, &msg, portMAX_DELAY);
+            lastWebsocketRefresh = millis();
+        }
+
         constexpr int REFRESHRATE_LCD_HZ = 5;
         constexpr int LCD_WAIT_TIME = 1000 / REFRESHRATE_LCD_HZ;
         static unsigned long lastLcdRefresh = 0;
