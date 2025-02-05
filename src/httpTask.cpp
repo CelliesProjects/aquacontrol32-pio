@@ -128,14 +128,15 @@ static void setupWebserverHandlers(PsychicHttpServer &server)
     server.on(
         "/timers", HTTP_GET, [](PsychicRequest *request)
         {
-            auto choice = getValidChannel(request);
-            if (!choice) 
+            auto validChannel = getValidChannel(request);
+            if (!validChannel) 
                 return ESP_OK;
+
+            uint8_t channelIndex = *validChannel;
 
             String content;
             content.reserve(256);
 
-            uint8_t channelIndex = *choice;
             {
                 std::lock_guard<std::mutex> lock(channelMutex);
                 for (auto &timer : channel[channelIndex])
@@ -156,9 +157,11 @@ static void setupWebserverHandlers(PsychicHttpServer &server)
     server.on(
         "/upload", HTTP_POST, [](PsychicRequest *request)
         {
-            auto choice = getValidChannel(request);
-            if (!choice) 
+            auto validChannel = getValidChannel(request);
+            if (!validChannel) 
                 return ESP_OK;
+
+            const uint8_t channelIndex = *validChannel;
 
             String csvData = request->body();
 
@@ -166,7 +169,7 @@ static void setupWebserverHandlers(PsychicHttpServer &server)
             int startIdx = 0;
             int endIdx = csvData.indexOf('\n');
 
-            log_d("Parsing timers for channel %i", choice);
+            log_d("Parsing timers for channel %i", channelIndex);
 
             while (endIdx != -1)
             {
@@ -189,7 +192,7 @@ static void setupWebserverHandlers(PsychicHttpServer &server)
 
                     newTimers.push_back({time, percentage});
 
-                    log_v("Staging% 6i,% 4i for channel %i", time, percentage, choice);
+                    log_v("Staging% 6i,% 4i for channel %i", time, percentage, channelIndex);
                 }
 
                 startIdx = endIdx + 1;
@@ -204,7 +207,6 @@ static void setupWebserverHandlers(PsychicHttpServer &server)
                 return request->reply(400, TEXT_PLAIN, "Data sanity check failed");
             }
 
-            uint8_t channelIndex = *choice;
             {
                 std::lock_guard<std::mutex> lock(channelMutex);
                 channel[channelIndex].clear();
@@ -212,7 +214,7 @@ static void setupWebserverHandlers(PsychicHttpServer &server)
                     channel[channelIndex].push_back(timer);
             }
 
-            log_i("Cleared and added %i new timers to channel %i",channel[channelIndex].size(), choice);
+            log_i("Cleared and added %i new timers to channel %i",channel[channelIndex].size(), channelIndex);
 
             return request->reply(200, TEXT_PLAIN, "Timers updated successfully"); }
 
