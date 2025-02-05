@@ -21,6 +21,7 @@
             align-items: center;
             justify-content: center;
             height: 100vh;
+            max-height: 600px;
         }
 
         .container {
@@ -40,7 +41,31 @@
             cursor: pointer;
             border: 1px solid #000;
             position: relative;
-            overflow: hidden;
+            overflow: visible;
+        }
+
+        .channel .tooltip {
+            visibility: hidden;
+            width: 120px;
+            background-color: rgb(146, 6, 6);
+            color: #fff;
+            text-align: center;
+            padding: 5px;
+            border-radius: 5px;
+            position: absolute;
+            top: 2%;
+            /* Position above the div */
+            left: 50%;
+            transform: translateX(-50%);
+            opacity: 0;
+            transition: opacity 0.3s;
+            overflow: visible;
+        }
+
+        .channel:hover .tooltip {
+            visibility: visible;
+            opacity: 1;
+            z-index: 8;
         }
 
         .intensity-bar {
@@ -71,22 +96,27 @@
         <div class="channel">
             <div class="intensity-bar" style="height: 0%;"></div>
             <div class="intensity-label">0%</div>
+            <div class="tooltip">Click to edit<br>channel 0</div>
         </div>
         <div class="channel">
             <div class="intensity-bar" style="height: 0%;"></div>
             <div class="intensity-label">0%</div>
+            <div class="tooltip">Click to edit<br>channel 1</div>
         </div>
         <div class="channel">
             <div class="intensity-bar" style="height: 0%;"></div>
             <div class="intensity-label">0%</div>
+            <div class="tooltip">Click to edit<br>channel 2</div>
         </div>
         <div class="channel">
             <div class="intensity-bar" style="height: 0%;"></div>
             <div class="intensity-label">0%</div>
+            <div class="tooltip">Click to edit<br>channel 3</div>
         </div>
         <div class="channel">
             <div class="intensity-bar" style="height: 0%;"></div>
             <div class="intensity-label">0%</div>
+            <div class="tooltip">Click to edit<br>channel 4</div>
         </div>
     </div>
     <div id="connection-status">CONNECTING</div>
