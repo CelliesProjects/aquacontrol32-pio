@@ -63,7 +63,7 @@ static void setupWebsocketHandler(PsychicWebSocketHandler &websocketHandler)
         });
 }
 
-static std::optional<uint8_t> getValidChannel(PsychicRequest *request)
+static std::optional<uint8_t> validateChannel(PsychicRequest *request)
 {
     constexpr char *CHANNEL = "channel";
 
@@ -75,14 +75,13 @@ static std::optional<uint8_t> getValidChannel(PsychicRequest *request)
 
     const String &channelStr = request->getParam(CHANNEL)->value();
 
-    // Ensure the string consists of a single digit between '0' and '4'
     if (channelStr.length() != 1 || channelStr[0] < '0' || channelStr[0] > '4')
     {
         request->reply(400, TEXT_PLAIN, "Invalid channel parameter (must be a number 0-4)");
         return std::nullopt;
     }
 
-    return channelStr[0] - '0'; // Convert char to integer
+    return channelStr[0] - '0';
 }
 
 static void setupWebserverHandlers(PsychicHttpServer &server)
@@ -128,7 +127,7 @@ static void setupWebserverHandlers(PsychicHttpServer &server)
     server.on(
         "/timers", HTTP_GET, [](PsychicRequest *request)
         {
-            auto validChannel = getValidChannel(request);
+            auto validChannel = validateChannel(request);
             if (!validChannel) 
                 return ESP_OK;
 
@@ -157,7 +156,7 @@ static void setupWebserverHandlers(PsychicHttpServer &server)
     server.on(
         "/upload", HTTP_POST, [](PsychicRequest *request)
         {
-            auto validChannel = getValidChannel(request);
+            auto validChannel = validateChannel(request);
             if (!validChannel) 
                 return ESP_OK;
 
