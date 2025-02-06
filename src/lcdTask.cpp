@@ -136,6 +136,56 @@ void showIP(const char *ip)
     lcd.drawCenterString(ip, lcd.width() >> 1, 2, &DejaVu18);
 }
 
+void handleClock()
+{
+    static time_t lastSecond = 0;
+    if (time(NULL) != lastSecond)
+    {
+        struct tm timeinfo = {};
+        if (getLocalTime(&timeinfo, 0))
+            updateClock(timeinfo);
+        lastSecond = time(NULL);
+    }
+}
+
+void handleQueue()
+{
+    lcdMessage_t msg;
+    if (xQueueReceive(lcdQueue, &msg, 0))
+    {
+        switch (msg.type)
+        {
+        case lcdMessageType::SET_BRIGHTNESS:
+            lcd.setBrightness(msg.int1);
+            break;
+
+        case lcdMessageType::LCD_SYSTEM_MESSAGE:
+            showSystemMessage(msg.str);
+            break;
+
+        case lcdMessageType::UPDATE_LIGHTS:
+            updateLights();
+            break;
+            /*
+                        case lcdMessageType::MOON_PHASE:
+                            showMoon(msg.float1, msg.int1);
+                            break;
+            */
+
+        case lcdMessageType::SHOW_IP:
+            showIP(msg.str);
+            break;
+
+        case lcdMessageType::TEMPERATURE:
+            showTemp(msg.float1);
+            break;
+
+        default:
+            break;
+        }
+    }
+}
+
 void lcdTask(void *parameter)
 {
     if (xSemaphoreTake(spiMutex, portMAX_DELAY) == pdTRUE)
@@ -146,52 +196,15 @@ void lcdTask(void *parameter)
 
     while (1)
     {
-        if (xSemaphoreTake(spiMutex, 0) == pdTRUE)
+        lcdMessage_t dummy;
+        if (xQueuePeek(lcdQueue, &dummy, pdMS_TO_TICKS(5)) == pdTRUE)
         {
-            lcdMessage_t msg;
-            if (xQueueReceive(lcdQueue, &msg, pdTICKS_TO_MS(5)))
+            if (xSemaphoreTake(spiMutex, 0) == pdTRUE)
             {
-                switch (msg.type)
-                {
-                case lcdMessageType::SET_BRIGHTNESS:
-                    lcd.setBrightness(msg.int1);
-                    break;
-
-                case lcdMessageType::LCD_SYSTEM_MESSAGE:
-                    showSystemMessage(msg.str);
-                    break;
-
-                case lcdMessageType::UPDATE_LIGHTS:
-                    updateLights();
-                    break;
-                    /*
-                                case lcdMessageType::MOON_PHASE:
-                                    showMoon(msg.float1, msg.int1);
-                                    break;
-                    */
-
-                case lcdMessageType::SHOW_IP:
-                    showIP(msg.str);
-                    break;
-
-                case lcdMessageType::TEMPERATURE:
-                    showTemp(msg.float1);
-                    break;
-
-                default:
-                    break;
-                }
+                handleQueue();
+                handleClock(); // here we hitch a ride on the fact that dimmerTask will send a msg every couple of milliseconds
+                xSemaphoreGive(spiMutex);
             }
-
-            static time_t lastSecond = 0;
-            if (time(NULL) != lastSecond)
-            {
-                struct tm timeinfo = {};
-                if (getLocalTime(&timeinfo, 0))
-                    updateClock(timeinfo);
-                lastSecond = time(NULL);
-            }
-            xSemaphoreGive(spiMutex);
         }
     }
 }
