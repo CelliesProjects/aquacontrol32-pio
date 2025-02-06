@@ -9,6 +9,7 @@
                                    /* modded with https://tchapi.github.io/Adafruit-GFX-Font-Customiser/ */
 
 extern float currentPercentage[NUMBER_OF_CHANNELS];
+extern SemaphoreHandle_t spiMutex;
 
 QueueHandle_t lcdQueue = xQueueCreate(6, sizeof(lcdMessage_t));
 

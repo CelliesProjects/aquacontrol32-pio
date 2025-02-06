@@ -13,7 +13,7 @@
 #include "lightTimer.h"
 
 static const char *DEFAULT_TIMERFILE = "/default.aqu";
-static SemaphoreHandle_t sdMutex;
+SemaphoreHandle_t spiMutex;
 
 extern QueueHandle_t lcdQueue;
 extern void lcdTask(void *parameter);
@@ -197,17 +197,17 @@ static void parseTimerFile(File &file)
 
 bool saveDefaultTimers()
 {
-    if (!sdMutex)
+    if (!spiMutex)
     {
         log_e("SD mutex not initialized!");
         return false;
     }
 
-    if (xSemaphoreTake(sdMutex, pdMS_TO_TICKS(1000)) == pdTRUE)
+    if (xSemaphoreTake(spiMutex, pdMS_TO_TICKS(1000)) == pdTRUE)
     {
         if (!SD.begin(SDCARD_SS))
         {
-            xSemaphoreGive(sdMutex);
+            xSemaphoreGive(spiMutex);
             log_e("SD initialization failed!");
             return false;
         }
@@ -216,7 +216,7 @@ bool saveDefaultTimers()
         if (!file)
         {
             SD.end();
-            xSemaphoreGive(sdMutex);
+            xSemaphoreGive(spiMutex);
             log_e("Failed to open %s for writing", DEFAULT_TIMERFILE);
             return false;
         }
@@ -237,7 +237,7 @@ bool saveDefaultTimers()
         file.close();
         SD.end();
 
-        xSemaphoreGive(sdMutex);
+        xSemaphoreGive(spiMutex);
         log_i("Saved default timers to %s", DEFAULT_TIMERFILE);
 
         return true;
@@ -251,17 +251,17 @@ bool saveDefaultTimers()
 
 void loadDefaultTimers()
 {
-    if (!sdMutex)
+    if (!spiMutex)
     {
         log_e("SD mutex not initialized!");
         return;
     }
 
-    if (xSemaphoreTake(sdMutex, pdMS_TO_TICKS(1000)) == pdTRUE)
+    if (xSemaphoreTake(spiMutex, pdMS_TO_TICKS(1000)) == pdTRUE)
     {
         if (!SD.begin(SDCARD_SS))
         {
-            xSemaphoreGive(sdMutex);
+            xSemaphoreGive(spiMutex);
             log_e("SD initialization failed!");
             return;
         }
@@ -279,7 +279,7 @@ void loadDefaultTimers()
             log_w("Timer file %s not found!", DEFAULT_TIMERFILE);
 
         SD.end(); // Clean shutdown
-        xSemaphoreGive(sdMutex);
+        xSemaphoreGive(spiMutex);
     }
     else
         log_e("SD read timeout!");
@@ -295,8 +295,8 @@ void setup(void)
 
     log_i("aquacontrol v2");
 
-    sdMutex = xSemaphoreCreateMutex();
-    if (!sdMutex)
+    spiMutex = xSemaphoreCreateMutex();
+    if (!spiMutex)
     {
         log_e("Failed to create SD mutex! system halted!");
         while (1)

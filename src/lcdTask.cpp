@@ -124,67 +124,74 @@ static void showTemp(const float temperature)
             log_e("could not create sprite");
             return;
         }
-    }    
+    }
     char buffer[10];
     snprintf(buffer, sizeof(buffer), "%.2f°C", temperature);
     temp.drawCenterString(buffer, temp.width() >> 1, 6, &font);
     temp.pushSprite(0, 15);
-
 }
 
 void showIP(const char *ip)
 {
-    lcd.drawCenterString(ip, lcd.width() >> 1, 2, &DejaVu18);    
+    lcd.drawCenterString(ip, lcd.width() >> 1, 2, &DejaVu18);
 }
 
 void lcdTask(void *parameter)
 {
-    lcd.init();
+    if (xSemaphoreTake(spiMutex, portMAX_DELAY) == pdTRUE)
+    {
+        lcd.init();
+        xSemaphoreGive(spiMutex);
+    }
 
     while (1)
     {
-        lcdMessage_t msg;
-        if (xQueueReceive(lcdQueue, &msg, pdTICKS_TO_MS(5)))
+        if (xSemaphoreTake(spiMutex, 0) == pdTRUE)
         {
-            switch (msg.type)
+            lcdMessage_t msg;
+            if (xQueueReceive(lcdQueue, &msg, pdTICKS_TO_MS(5)))
             {
-            case lcdMessageType::SET_BRIGHTNESS:
-                lcd.setBrightness(msg.int1);
-                break;
+                switch (msg.type)
+                {
+                case lcdMessageType::SET_BRIGHTNESS:
+                    lcd.setBrightness(msg.int1);
+                    break;
 
-            case lcdMessageType::LCD_SYSTEM_MESSAGE:
-                showSystemMessage(msg.str);
-                break;
+                case lcdMessageType::LCD_SYSTEM_MESSAGE:
+                    showSystemMessage(msg.str);
+                    break;
 
-            case lcdMessageType::UPDATE_LIGHTS:
-                updateLights();
-                break;
-/*
-            case lcdMessageType::MOON_PHASE:
-                showMoon(msg.float1, msg.int1);
-                break;
-*/
+                case lcdMessageType::UPDATE_LIGHTS:
+                    updateLights();
+                    break;
+                    /*
+                                case lcdMessageType::MOON_PHASE:
+                                    showMoon(msg.float1, msg.int1);
+                                    break;
+                    */
 
-            case lcdMessageType::SHOW_IP:
-                showIP(msg.str);
-                break;
+                case lcdMessageType::SHOW_IP:
+                    showIP(msg.str);
+                    break;
 
-            case lcdMessageType::TEMPERATURE:
-                showTemp(msg.float1);
-                break;
+                case lcdMessageType::TEMPERATURE:
+                    showTemp(msg.float1);
+                    break;
 
-            default:
-                break;
+                default:
+                    break;
+                }
             }
-        }
 
-        static time_t lastSecond = 0;
-        if (time(NULL) != lastSecond)
-        {
-            struct tm timeinfo = {};
-            if (getLocalTime(&timeinfo, 0))
-                updateClock(timeinfo);
-            lastSecond = time(NULL);
+            static time_t lastSecond = 0;
+            if (time(NULL) != lastSecond)
+            {
+                struct tm timeinfo = {};
+                if (getLocalTime(&timeinfo, 0))
+                    updateClock(timeinfo);
+                lastSecond = time(NULL);
+            }
+            xSemaphoreGive(spiMutex);
         }
     }
 }
