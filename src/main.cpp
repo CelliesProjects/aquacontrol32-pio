@@ -16,16 +16,15 @@ static const char *DEFAULT_TIMERFILE = "/default.aqu";
 SemaphoreHandle_t spiMutex;
 
 extern QueueHandle_t lcdQueue;
-extern void lcdTask(void *parameter);
 extern void messageOnLcd(const char *str);
 
+extern void dimmerTask(void *parameter);
+extern void httpTask(void *parameter);
+extern void lcdTask(void *parameter);
 extern void sensorTask(void *parameter);
 
-extern void dimmerTask(void *parameter);
 extern std::vector<lightTimer_t> channel[NUMBER_OF_CHANNELS];
 extern std::mutex channelMutex;
-
-extern void httpTask(void *parameter);
 
 static void startDimmerTask()
 {
@@ -199,7 +198,7 @@ bool saveDefaultTimers()
 {
     if (!spiMutex)
     {
-        log_e("SD mutex not initialized!");
+        log_e("spi mutex not initialized!");
         return false;
     }
 
@@ -232,7 +231,6 @@ bool saveDefaultTimers()
                         file.printf("%d,%d\n", timer.time, timer.percentage);
             }
         }
-        file.flush();
 
         file.close();
         SD.end();
@@ -253,7 +251,7 @@ void loadDefaultTimers()
 {
     if (!spiMutex)
     {
-        log_e("SD mutex not initialized!");
+        log_e("spi mutex not initialized!");
         return;
     }
 
@@ -298,7 +296,7 @@ void setup(void)
     spiMutex = xSemaphoreCreateMutex();
     if (!spiMutex)
     {
-        log_e("Failed to create SD mutex! system halted!");
+        log_e("Failed to create spi mutex! system halted!");
         while (1)
             delay(100);
     }
