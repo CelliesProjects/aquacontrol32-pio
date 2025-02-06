@@ -577,6 +577,105 @@
                 }
             });
 
+
+
+
+
+
+
+
+
+
+
+        // NEW TOUCH HANDLERS - Variables for long press detection
+        let longPressTimer;
+        const LONG_PRESS_DURATION = 500; // milliseconds
+
+        function handleTouchStart(event) {
+            event.preventDefault(); // Prevent scrolling/zooming
+            const touch = event.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const x = touch.clientX - rect.left;
+            const y = touch.clientY - rect.top;
+
+            // Start long press timer
+            longPressTimer = setTimeout(() => {
+                handleLongPress(x, y, touch.clientX, touch.clientY);
+            }, LONG_PRESS_DURATION);
+
+            // Check if touching a point
+            rightClickedPoint = findPointAt(x, y);
+            if (rightClickedPoint) {
+                startDragging(x, y);
+            } else {
+                // For new points, wait to see if it's a long press
+                draggingPoint = null;
+            }
+        }
+
+        function handleTouchMove(event) {
+            event.preventDefault();
+            if (!draggingPoint) return;
+
+            const touch = event.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const x = touch.clientX - rect.left;
+            const y = touch.clientY - rect.top;
+
+            dragPoint(x, y);
+            updateTooltip(x, y);
+        }
+
+        function handleTouchEnd(event) {
+            clearTimeout(longPressTimer); // Cancel long press timer
+            if (draggingPoint) {
+                stopDragging();
+            } else if (!rightClickedPoint) {
+                // Handle tap as click (add new point)
+                const touch = event.changedTouches[0];
+                const rect = canvas.getBoundingClientRect();
+                const x = touch.clientX - rect.left;
+                const y = touch.clientY - rect.top;
+                addTimer(x, y);
+            }
+            rightClickedPoint = null;
+        }
+
+        function handleLongPress(x, y, clientX, clientY) {
+            const point = findPointAt(x, y);
+            if (point && point.time !== 0) {
+                rightClickedPoint = point;
+                showContextMenu(clientX, clientY);
+            }
+        }
+
+        // Add touch event listeners to canvas
+        canvas.addEventListener('touchstart', handleTouchStart);
+        canvas.addEventListener('touchmove', handleTouchMove);
+        canvas.addEventListener('touchend', handleTouchEnd);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             document.addEventListener("DOMContentLoaded", function () {
                 const urlParams = new URLSearchParams(window.location.search);
 
