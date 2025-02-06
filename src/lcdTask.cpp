@@ -188,7 +188,7 @@ void handleQueue()
 
 void lcdTask(void *parameter)
 {
-    if (xSemaphoreTake(spiMutex, portMAX_DELAY) == pdTRUE)
+    if (xSemaphoreTake(spiMutex, portMAX_DELAY))
     {
         lcd.init();
         xSemaphoreGive(spiMutex);
@@ -197,9 +197,9 @@ void lcdTask(void *parameter)
     while (1)
     {
         lcdMessage_t dummy;
-        if (xQueuePeek(lcdQueue, &dummy, pdMS_TO_TICKS(5)) == pdTRUE)
+        if (xQueuePeek(lcdQueue, &dummy, portMAX_DELAY))
         {
-            if (xSemaphoreTake(spiMutex, 0) == pdTRUE)
+            if (xSemaphoreTake(spiMutex, 0))
             {
                 handleQueue();
                 handleClock(); // here we hitch a ride on the fact that dimmerTask will send a msg every couple of milliseconds

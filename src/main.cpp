@@ -202,7 +202,7 @@ bool saveDefaultTimers()
         return false;
     }
 
-    if (xSemaphoreTake(spiMutex, pdMS_TO_TICKS(1000)) == pdTRUE)
+    if (xSemaphoreTake(spiMutex, pdMS_TO_TICKS(1000)))
     {
         if (!SD.begin(SDCARD_SS))
         {
@@ -255,7 +255,7 @@ void loadDefaultTimers()
         return;
     }
 
-    if (xSemaphoreTake(spiMutex, pdMS_TO_TICKS(1000)) == pdTRUE)
+    if (xSemaphoreTake(spiMutex, pdMS_TO_TICKS(1000)))
     {
         if (!SD.begin(SDCARD_SS))
         {
