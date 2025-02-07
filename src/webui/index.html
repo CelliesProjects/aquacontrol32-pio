@@ -22,16 +22,21 @@
             justify-content: center;
             height: 100vh;
             max-height: 600px;
+            width: 100%;
         }
 
         .container {
             display: flex;
             gap: 10px;
-            height: inherit;
+            height: 80%;
+            width: 80%;
+            max-width: 800px;
+            max-height: 600px;
         }
 
+
         .channel {
-            width: 100px;
+            width: inherit;
             height: 100%;
             background-color: lightblue;
             display: flex;
@@ -42,6 +47,7 @@
             border: 1px solid #000;
             position: relative;
             overflow: visible;
+            border-radius: 5px;
         }
 
         .channel .tooltip {
@@ -73,7 +79,9 @@
             position: absolute;
             bottom: 0;
             background-color: blue;
-            transition: height 0.3s ease-in-out;
+            transition: height 0.2s ease-in-out;
+            border-bottom-left-radius: 5px;
+            border-bottom-right-radius: 5px;
         }
 
         .intensity-label {
