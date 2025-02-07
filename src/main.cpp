@@ -204,7 +204,8 @@ bool saveDefaultTimers()
 
     if (xSemaphoreTake(spiMutex, pdMS_TO_TICKS(1000)))
     {
-        // there is an issue here with esp32-s3 box not saving timers see: https://github.com/lovyan03/LovyanGFX/issues/569
+        // there is an issue here with esp32-s3 box not saving timers
+        // see: https://github.com/lovyan03/LovyanGFX/issues/569
         // and https://github.com/lovyan03/LovyanGFX/issues/617
         if (!SD.begin(SDCARD_SS))
         {
@@ -212,7 +213,7 @@ bool saveDefaultTimers()
             log_e("SD initialization failed!");
             return false;
         }
-        
+
         File file = SD.open(DEFAULT_TIMERFILE, FILE_WRITE);
         if (!file)
         {
