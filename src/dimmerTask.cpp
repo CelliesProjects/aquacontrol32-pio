@@ -33,7 +33,7 @@ void dimmerTask(void *parameter)
 #ifdef LGFX_M5STACK
     static constexpr int BACKLIGHT_PIN = 32;
     if (!ledcChangeFrequency(BACKLIGHT_PIN, freq, PWM_BITDEPTH) ||
-        !ledcWrite(BACKLIGHT_PIN, LEDC_MAX_VALUE >> 4))
+        !ledcWrite(BACKLIGHT_PIN, LEDC_MAX_VALUE >> 2))
         log_w("Could not capture M5Stack backlight");
 #endif
 

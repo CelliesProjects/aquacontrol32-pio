@@ -45,12 +45,15 @@ static void showSystemMessage(char *str)
 
 static void updateLights()
 {
+    constexpr int yPos = 60;
     static LGFX_Sprite lightBars(&lcd);
+
+    const GFXfont &font = lgfx::fonts::DejaVu12;
 
     if (lightBars.width() == 0 || lightBars.height() == 0)
     {
         lightBars.setColorDepth(lgfx::palette_2bit);
-        if (!lightBars.createSprite(lcd.width(), 150))
+        if (!lightBars.createSprite(lcd.width(), lcd.height() - yPos))
         {
             log_e("could not create sprite");
             return;
@@ -63,7 +66,7 @@ static void updateLights()
     }
     lightBars.clear();
 
-    const int BAR_HEIGHT = lightBars.height() - DejaVu12.yAdvance - 3;
+    const int BAR_HEIGHT = lightBars.height() - font.yAdvance - 3;
     constexpr const int BAR_WIDTH = 38;
     const int DISTANCE = lightBars.width() / NUMBER_OF_CHANNELS;
     const int HALF_DISTANCE = DISTANCE / 2;
@@ -75,13 +78,13 @@ static void updateLights()
         int w = 0;
         lightBars.textLength(buffer, w);
         const int THIS_OFFSET = HALF_DISTANCE + (ch * DISTANCE);
-        lightBars.drawCenterString(buffer, THIS_OFFSET - (w / 2), lightBars.height() - DejaVu12.yAdvance, &DejaVu12);
+        lightBars.drawCenterString(buffer, THIS_OFFSET - (w / 2), lightBars.height() - font.yAdvance, &font);
 
         const int filledHeight = mapf(currentPercentage[ch], 0, 100, 0, BAR_HEIGHT);
         lightBars.drawRect(THIS_OFFSET - (BAR_WIDTH / 2), BAR_HEIGHT, BAR_WIDTH, -BAR_HEIGHT, 1);
         lightBars.fillRect(THIS_OFFSET - (BAR_WIDTH / 2), BAR_HEIGHT, BAR_WIDTH, -filledHeight, 1);
     }
-    lightBars.pushSprite(0, 60);
+    lightBars.pushSprite(0, yPos);
 }
 
 static void showMoon(float percentlit, int angle)
@@ -105,9 +108,14 @@ static void updateClock(const struct tm &timeinfo)
             log_e("could not create sprite");
             return;
         }
+        clock.setPaletteColor(1, TFT_WHITE);
+        clock.setPaletteColor(2, 0x00FF00U);
+        clock.setPaletteColor(3, 0xFF0000U);
     }
     char timestr[64];
     strftime(timestr, sizeof(timestr), "%c", &timeinfo);
+    clock.clear(2);
+    clock.setTextColor(0, 2);
     clock.drawCenterString(timestr, clock.width() >> 1, 0, &font);
     clock.pushSprite(0, lcd.height() - font.yAdvance);
 }
@@ -124,16 +132,42 @@ static void showTemp(const float temperature)
             log_e("could not create sprite");
             return;
         }
+        temp.setPaletteColor(1, TFT_WHITE);
+        temp.setPaletteColor(2, 0x00FF00U);
+        temp.setPaletteColor(3, TFT_GREEN);
     }
     char buffer[10];
     snprintf(buffer, sizeof(buffer), "%.2f°C", temperature);
-    temp.drawCenterString(buffer, temp.width() >> 1, 6, &font);
-    temp.pushSprite(0, 15);
+    temp.clear(3);
+    temp.setTextColor(0, 3);
+    temp.setTextDatum(CC_DATUM);
+    temp.drawString(buffer, temp.width() >> 1, 3 + (font.yAdvance >> 1), &font);
+    temp.pushSprite(0, 25);
 }
 
 void showIP(const char *ip)
 {
-    lcd.drawCenterString(ip, lcd.width() >> 1, 2, &DejaVu18);
+    const GFXfont &font = DejaVu18;
+    static LGFX_Sprite ipAddress(&lcd);
+    if (ipAddress.width() == 0 || ipAddress.height() == 0)
+    {
+        ipAddress.setColorDepth(lgfx::palette_2bit);
+        if (!ipAddress.createSprite(lcd.width(), font.yAdvance))
+        {
+            log_e("could not create sprite");
+            return;
+        }
+        ipAddress.setPaletteColor(1, TFT_WHITE);
+        ipAddress.setPaletteColor(2, 0x00FF00U);
+        ipAddress.setPaletteColor(3, TFT_DARKCYAN);
+    }
+    char buffer[16];
+    snprintf(buffer, sizeof(buffer), "%s", ip);
+    ipAddress.clear(3);
+    ipAddress.setTextColor(0, 3);
+    ipAddress.setTextDatum(CC_DATUM);
+    ipAddress.drawString(buffer, ipAddress.width() >> 1, 2 + (font.yAdvance >> 1), &font);
+    ipAddress.pushSprite(0, 0);
 }
 
 void handleClock()
@@ -148,7 +182,7 @@ void handleClock()
     }
 }
 
-void handleQueue()
+void handleNextMessage()
 {
     lcdMessage_t msg;
     if (xQueueReceive(lcdQueue, &msg, 0))
@@ -201,8 +235,8 @@ void lcdTask(void *parameter)
         {
             if (xSemaphoreTake(spiMutex, 0))
             {
-                handleQueue();
-                handleClock(); // here we hitch a ride on the fact that dimmerTask will send a msg every couple of milliseconds
+                handleNextMessage();
+                // handleClock(); // here we hitch a ride on the fact that dimmerTask will send a msg every couple of milliseconds
                 xSemaphoreGive(spiMutex);
             }
         }
