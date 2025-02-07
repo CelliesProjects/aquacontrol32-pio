@@ -14,10 +14,27 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
+            background-color: black;
         }
 
         #status {
             margin: 0;
+            color: cornflowerblue;
+        }
+
+        .container {
+            height: 80%;
+            width: 90%;
+            max-width: 1200px;
+            max-height: 600px;
+        }
+
+        #actionButtons,
+        #channelButtons {
+            width: 100%;            
+            background-color: cornflowerblue;
+            border: 1px solid #ccc;
+            min-width: 600px;
         }
 
         #actionButtons button,
@@ -29,10 +46,11 @@
         canvas {
             border: 1px solid #ccc;
             margin-top: 5px;
-            width: 90%;
+            width: 100%;
             height: 300px;
             max-width: 1200px;
             min-width: 600px;
+            background-color: cornflowerblue;
         }
 
         #contextMenu {
@@ -77,11 +95,12 @@
         #timersList {
             border: 1px solid #ccc;
             margin-top: 5px;
-            width: 90%;
+            width: 100%;
             max-width: 1200px;
             min-width: 600px;
             height: 200px;
             overflow-y: scroll;
+            background-color: cornflowerblue;
         }
     </style>
 </head>
@@ -134,21 +153,25 @@
     <div>
         <p id="status">waiting for channel data...</p>
     </div>
-    <div id="channelButtons">
-        <button onclick="changeChannel(0)">Channel 0</button>
-        <button onclick="changeChannel(1)">Channel 1</button>
-        <button onclick="changeChannel(2)">Channel 2</button>
-        <button onclick="changeChannel(3)">Channel 3</button>
-        <button onclick="changeChannel(4)">Channel 4</button>
+
+    <div class="container" id="button-container">
+        <div id="channelButtons">
+            <button onclick="changeChannel(0)">Channel 0</button>
+            <button onclick="changeChannel(1)">Channel 1</button>
+            <button onclick="changeChannel(2)">Channel 2</button>
+            <button onclick="changeChannel(3)">Channel 3</button>
+            <button onclick="changeChannel(4)">Channel 4</button>
+        </div>
+        <canvas id="timelineCanvas"></canvas>
+        <div id="actionButtons">
+            <button id="reloadButton">Reload Timers</button>
+            <button id="clearButton">Clear Timers</button>
+            <button onclick="uploadTimers(currentChannel)">Upload Timers</button>
+            <button onclick="window.location = '/'">To the index</button>
+        </div>
+        <div id="timersList"></div>
     </div>
-    <div id="actionButtons">
-        <button id="reloadButton">Reload Timers</button>
-        <button id="clearButton">Clear Timers</button>
-        <button onclick="uploadTimers(currentChannel)">Upload Timers</button>
-        <button onclick="window.location = '/'">To the index</button>
-    </div>
-    <canvas id="timelineCanvas"></canvas>
-    <div id="timersList"></div>
+
     <div id="contextMenu">
         <button id="deletePoint">Delete Timer</button>
     </div>
@@ -174,12 +197,12 @@
 
                 // Clear any existing content in the list container
                 listContainer.innerHTML = '';
-/*
-                // Create and append the header for the list
-                const header = document.createElement('h3');
-                header.textContent = 'Current Timers';
-                listContainer.appendChild(header);
-*/
+                /*
+                                // Create and append the header for the list
+                                const header = document.createElement('h3');
+                                header.textContent = 'Current Timers';
+                                listContainer.appendChild(header);
+                */
                 // Create a list element for each timer
                 const ul = document.createElement('ul');
                 timers.forEach(timer => {
@@ -539,7 +562,7 @@
                 fetch(`/timers?channel=${channel}`)
                     .then(response => {
                         if (!response.ok) {
-                            redrawCanvas();
+                            //redrawCanvas();
                             throw new Error(`Failed to fetch timers: ${response.statusText}`);
                         }
                         return response.text();
@@ -556,6 +579,7 @@
                         redrawCanvas();
                     })
                     .catch(error => {
+                        redrawCanvas();
                         console.error("Error downloading timers:", error);
                         alert(`Error downloading timers: ${error.message}`);
                     });
@@ -587,72 +611,72 @@
 
 
 
-        // NEW TOUCH HANDLERS - Variables for long press detection
-        let longPressTimer;
-        const LONG_PRESS_DURATION = 500; // milliseconds
+            // NEW TOUCH HANDLERS - Variables for long press detection
+            let longPressTimer;
+            const LONG_PRESS_DURATION = 500; // milliseconds
 
-        function handleTouchStart(event) {
-            event.preventDefault(); // Prevent scrolling/zooming
-            const touch = event.touches[0];
-            const rect = canvas.getBoundingClientRect();
-            const x = touch.clientX - rect.left;
-            const y = touch.clientY - rect.top;
-
-            // Start long press timer
-            longPressTimer = setTimeout(() => {
-                handleLongPress(x, y, touch.clientX, touch.clientY);
-            }, LONG_PRESS_DURATION);
-
-            // Check if touching a point
-            rightClickedPoint = findPointAt(x, y);
-            if (rightClickedPoint) {
-                startDragging(x, y);
-            } else {
-                // For new points, wait to see if it's a long press
-                draggingPoint = null;
-            }
-        }
-
-        function handleTouchMove(event) {
-            event.preventDefault();
-            if (!draggingPoint) return;
-
-            const touch = event.touches[0];
-            const rect = canvas.getBoundingClientRect();
-            const x = touch.clientX - rect.left;
-            const y = touch.clientY - rect.top;
-
-            dragPoint(x, y);
-            updateTooltip(x, y);
-        }
-
-        function handleTouchEnd(event) {
-            clearTimeout(longPressTimer); // Cancel long press timer
-            if (draggingPoint) {
-                stopDragging();
-            } else if (!rightClickedPoint) {
-                // Handle tap as click (add new point)
-                const touch = event.changedTouches[0];
+            function handleTouchStart(event) {
+                event.preventDefault(); // Prevent scrolling/zooming
+                const touch = event.touches[0];
                 const rect = canvas.getBoundingClientRect();
                 const x = touch.clientX - rect.left;
                 const y = touch.clientY - rect.top;
-                addTimer(x, y);
-            }
-            rightClickedPoint = null;
-        }
 
-        function handleLongPress(x, y, clientX, clientY) {
-            const point = findPointAt(x, y);
-            if (point && point.time !== 0) {
-                rightClickedPoint = point;
-                showContextMenu(clientX, clientY);
-            }
-        }
+                // Start long press timer
+                longPressTimer = setTimeout(() => {
+                    handleLongPress(x, y, touch.clientX, touch.clientY);
+                }, LONG_PRESS_DURATION);
 
-        // Add touch event listeners to canvas
-        canvas.addEventListener('touchstart', handleTouchStart);
-        canvas.addEventListener('touchmove', handleTouchMove);
-        canvas.addEventListener('touchend', handleTouchEnd);
+                // Check if touching a point
+                rightClickedPoint = findPointAt(x, y);
+                if (rightClickedPoint) {
+                    startDragging(x, y);
+                } else {
+                    // For new points, wait to see if it's a long press
+                    draggingPoint = null;
+                }
+            }
+
+            function handleTouchMove(event) {
+                event.preventDefault();
+                if (!draggingPoint) return;
+
+                const touch = event.touches[0];
+                const rect = canvas.getBoundingClientRect();
+                const x = touch.clientX - rect.left;
+                const y = touch.clientY - rect.top;
+
+                dragPoint(x, y);
+                updateTooltip(x, y);
+            }
+
+            function handleTouchEnd(event) {
+                clearTimeout(longPressTimer); // Cancel long press timer
+                if (draggingPoint) {
+                    stopDragging();
+                } else if (!rightClickedPoint) {
+                    // Handle tap as click (add new point)
+                    const touch = event.changedTouches[0];
+                    const rect = canvas.getBoundingClientRect();
+                    const x = touch.clientX - rect.left;
+                    const y = touch.clientY - rect.top;
+                    addTimer(x, y);
+                }
+                rightClickedPoint = null;
+            }
+
+            function handleLongPress(x, y, clientX, clientY) {
+                const point = findPointAt(x, y);
+                if (point && point.time !== 0) {
+                    rightClickedPoint = point;
+                    showContextMenu(clientX, clientY);
+                }
+            }
+
+            // Add touch event listeners to canvas
+            canvas.addEventListener('touchstart', handleTouchStart);
+            canvas.addEventListener('touchmove', handleTouchMove);
+            canvas.addEventListener('touchend', handleTouchEnd);
 
 
 
