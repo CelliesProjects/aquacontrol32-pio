@@ -9,7 +9,7 @@ static constexpr char *GZIP = "gzip";
 static constexpr char *IF_MODIFIED_SINCE = "If-Modified-Since";
 static constexpr char *IF_NONE_MATCH = "If-None-Match";
 
-static char lastModified[30];
+static char contentCreationTime[30];
 
 static inline bool samePageIsCached(PsychicRequest *request, const char *date, const char *etag)
 {
@@ -89,14 +89,14 @@ static void setupWebserverHandlers(PsychicHttpServer &server)
     server.on(
         "/", HTTP_GET, [](PsychicRequest *request)
         {
-            if (samePageIsCached(request, lastModified, etagValue))
+            if (samePageIsCached(request, contentCreationTime, etagValue))
                 return request->reply(304);
 
             extern const uint8_t index_start[] asm("_binary_src_webui_index_html_gz_start");
             extern const uint8_t index_end[] asm("_binary_src_webui_index_html_gz_end");
 
             PsychicResponse response = PsychicResponse(request);
-            addStaticContentHeaders(response, lastModified, etagValue);
+            addStaticContentHeaders(response, contentCreationTime, etagValue);
             response.addHeader(CONTENT_ENCODING, GZIP);
             response.setContentType(TEXT_HTML);
             const size_t size = index_end - index_start;
@@ -108,14 +108,14 @@ static void setupWebserverHandlers(PsychicHttpServer &server)
     server.on(
         "/editor", HTTP_GET, [](PsychicRequest *request)
         {
-            if (samePageIsCached(request, lastModified, etagValue))
+            if (samePageIsCached(request, contentCreationTime, etagValue))
                 return request->reply(304);
 
             extern const uint8_t editor_start[] asm("_binary_src_webui_editor_html_gz_start");
             extern const uint8_t editor_end[] asm("_binary_src_webui_editor_html_gz_end");   
 
             PsychicResponse response = PsychicResponse(request);
-            addStaticContentHeaders(response, lastModified, etagValue);
+            addStaticContentHeaders(response, contentCreationTime, etagValue);
             response.addHeader(CONTENT_ENCODING, GZIP);
             response.setContentType(TEXT_HTML);
             const size_t size = editor_end - editor_start;
@@ -255,12 +255,10 @@ void httpTask(void *parameter)
             delay(100);
     }
 
-    time_t rawTime = time(NULL); // TODO: change this to compile time like in the feather player project
-    const struct tm *timeinfo = gmtime(&rawTime);
+    static char contentCreationTime[30];
+    strftime(contentCreationTime, sizeof(contentCreationTime), "%a, %d %b %Y %X GMT", gmtime(&BUILD_EPOCH));
 
-    strftime(lastModified, sizeof(lastModified), "%a, %d %b %Y %X GMT", timeinfo);
-
-    generateETag(lastModified);
+    generateETag(contentCreationTime);
 
     static PsychicHttpServer server;
     static PsychicWebSocketHandler websocketHandler;

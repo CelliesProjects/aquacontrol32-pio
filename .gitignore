@@ -5,4 +5,5 @@
 .vscode/ipch
 .vscode/settings.json
 src/secrets.h
+src/build_epoch.h
 src/webui/*.html.gz
