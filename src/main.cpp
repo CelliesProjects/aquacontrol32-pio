@@ -4,7 +4,7 @@
 #include <FS.h>
 #include <SD.h>
 #include <esp_sntp.h>
-#include "freertos/semphr.h"
+#include <freertos/semphr.h>
 #include <vector>
 #include <mutex>
 
@@ -239,7 +239,7 @@ bool saveDefaultTimers()
         SD.end();
 
         xSemaphoreGive(spiMutex);
-        log_i("Saved default timers to %s", DEFAULT_TIMERFILE);
+        log_i("Timers saved to %s", DEFAULT_TIMERFILE);
 
         return true;
     }

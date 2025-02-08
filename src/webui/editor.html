@@ -30,7 +30,7 @@
 
         #actionButtons,
         #channelButtons {
-            width: 100%;            
+            width: 100%;
             background-color: cornflowerblue;
             min-width: 600px;
         }
@@ -700,8 +700,8 @@
                     currentChannel = Number(urlParams.get('channel'));
                 }
                 else {
+                    alert("no channel was requested.\n\nEditing defaults to channel 0.\n\nClick OK to continue.");
                     currentChannel = 0;
-                    alert("no channel requested. defaulting to channel 0");
                 }
 
                 if (isNaN(currentChannel) || currentChannel < 0 || currentChannel > 4) {
