@@ -48,6 +48,14 @@ static void startDimmerTask()
     }
 }
 
+static void showIPonDisplay()
+{
+    lcdMessage_t msg;
+    msg.type = SHOW_IP;
+    snprintf(msg.str, sizeof(msg.str), "%s", WiFi.localIP().toString().c_str());
+    xQueueSend(lcdQueue, &msg, portMAX_DELAY);
+}
+
 static void ntpCb(void *cb_arg)
 {
     log_i("NTP synced");
@@ -344,6 +352,8 @@ void setup(void)
             delay(100);
     }
 
+    showIPonDisplay();
+
     BaseType_t result = xTaskCreate(lcdTask,
                                     NULL,
                                     4096,
@@ -375,12 +385,7 @@ void setup(void)
     while (!WiFi.isConnected())
         delay(10);
 
-    {
-        lcdMessage_t msg;
-        msg.type = SHOW_IP;
-        snprintf(msg.str, sizeof(msg.str), "%s", WiFi.localIP().toString().c_str());
-        xQueueSend(lcdQueue, &msg, portMAX_DELAY);
-    }
+    showIPonDisplay();
 
     messageOnLcd("Syncing clock...");
 
