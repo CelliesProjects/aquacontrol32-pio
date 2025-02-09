@@ -17,11 +17,6 @@
             background-color: black;
         }
 
-        #status {
-            margin: 0;
-            color: cornflowerblue;
-        }
-
         .container {
             height: 80%;
             width: 100%;
@@ -124,7 +119,7 @@
         })
             .then(response => {
                 if (response.ok) {
-                    alert(`Channel ${channel} timers uploaded successfully!`);
+                    alert(`Channel ${channel} timers are saved!\n\nClick OK to continue.`);
                 } else {
                     response.text().then(text => {
                         alert(`Failed to upload timers: ${text}`);
@@ -143,10 +138,6 @@
 </script>
 
 <body>
-    <div>
-        <p id="status">waiting for channel data...</p>
-    </div>
-
     <div class="container" id="button-container">
         <div id="channelButtons">
             <button onclick="changeChannel(0)">Channel 0</button>
@@ -164,7 +155,6 @@
         </div>
         <div id="timersList"></div>
     </div>
-
     <div id="contextMenu">
         <button id="deletePoint">Delete Timer</button>
     </div>
@@ -568,7 +558,6 @@
                                 channelTimers.push({ time, intensity });
                         });
                         console.log(`Channel ${channel} timers downloaded:`, channelTimers);
-                        document.getElementById('status').innerHTML = `now editing channel ${channel}`;
                         redrawCanvas();
                     })
                     .catch(error => {
