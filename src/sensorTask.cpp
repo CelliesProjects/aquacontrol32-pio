@@ -28,6 +28,7 @@ void sensorTask(void *parameter)
     DeviceAddress sensorAddress;
     if (!sensor.getAddress(sensorAddress, 0))
     {
+        updateDisplay(DEVICE_DISCONNECTED_C);
         log_i("No DS18B20 sensor found. Deleting task.");
         vTaskDelete(NULL);
     }

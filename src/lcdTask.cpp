@@ -136,12 +136,18 @@ static void showTemp(const float temperature)
         temp.setPaletteColor(2, 0x00FF00U);
         temp.setPaletteColor(3, TFT_GREEN);
     }
-    char buffer[10];
-    snprintf(buffer, sizeof(buffer), "%.2f°C", temperature);
     temp.clear(3);
     temp.setTextColor(0, 3);
     temp.setTextDatum(CC_DATUM);
-    temp.drawString(buffer, temp.width() >> 1, 3 + (font.yAdvance >> 1), &font);
+    if (temperature != -127.0)
+    {
+        char buffer[10];
+        snprintf(buffer, sizeof(buffer), "%.2f°C", temperature);
+        temp.drawString(buffer, temp.width() >> 1, 3 + (font.yAdvance >> 1), &font);
+    }
+    else
+        temp.drawString("NO SENSOR", temp.width() >> 1, 3 + (font.yAdvance >> 1), &font);
+
     temp.pushSprite(0, 25);
 }
 
