@@ -194,11 +194,12 @@ static void parseTimerFile(File &file)
     log_v("read %i lines", currentLine);
 }
 
-bool saveDefaultTimers()
+bool saveDefaultTimers(String &result)
 {
     if (!spiMutex)
     {
-        log_e("spi mutex not initialized!");
+        result = "SPI mutex not initialized";
+        log_e("%s", result.c_str());
         return false;
     }
 
@@ -210,7 +211,8 @@ bool saveDefaultTimers()
         if (!SD.begin(SDCARD_SS))
         {
             xSemaphoreGive(spiMutex);
-            log_e("SD initialization failed!");
+            result = "SD initialization failed.\n\nPlease insert an SD card and retry.\n\nClick OK to continue.";
+            log_e("%s", result.c_str());
             return false;
         }
 
@@ -219,13 +221,15 @@ bool saveDefaultTimers()
         {
             SD.end();
             xSemaphoreGive(spiMutex);
-            log_e("Failed to open %s for writing", DEFAULT_TIMERFILE);
+            result = "Failed to open ";
+            result.concat(DEFAULT_TIMERFILE);
+            result.concat(" for writing.");
+            log_e("%s", result.c_str());
             return false;
         }
 
         {
             std::lock_guard<std::mutex> lock(channelMutex);
-
             for (int i = 0; i < NUMBER_OF_CHANNELS; ++i)
             {
                 file.printf("[%d]\n", i); // Write channel header
@@ -239,13 +243,15 @@ bool saveDefaultTimers()
         SD.end();
 
         xSemaphoreGive(spiMutex);
-        log_i("Timers saved to %s", DEFAULT_TIMERFILE);
-
+        result = "Saved timers to ";
+        result.concat(DEFAULT_TIMERFILE);
+        log_i("%s", result.c_str());
         return true;
     }
     else
     {
-        log_e("SD write timeout!");
+        result = "SPI mutex timeout.";
+        log_e("%s", result.c_str());
         return false;
     }
 }

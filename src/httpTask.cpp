@@ -186,7 +186,7 @@ static void setupWebserverHandlers(PsychicHttpServer &server)
                     if (time > 86400 || percentage > 100)
                     {
                         log_e("Timer data value overflow");
-                        return request->reply(400, TEXT_PLAIN, "Invalid timer data");
+                        return request->reply(400, TEXT_PLAIN, "Overflow in timer data");
                     }
 
                     newTimers.push_back({time, percentage});
@@ -215,10 +215,12 @@ static void setupWebserverHandlers(PsychicHttpServer &server)
 
             log_i("Cleared and added %i new timers to channel %i",channel[channelIndex].size(), channelIndex);
 
-            if (!saveDefaultTimers())
-                return request->reply(500, TEXT_PLAIN, "Could not save timers"); 
+            String result;
+            result.reserve(128);
+            if (!saveDefaultTimers(result))
+                return request->reply(500, TEXT_PLAIN, result.c_str()); 
 
-            return request->reply(200, TEXT_PLAIN, "Timers updated and saved successfully"); }
+            return request->reply(200, TEXT_PLAIN, result.c_str()); }
 
     );
 

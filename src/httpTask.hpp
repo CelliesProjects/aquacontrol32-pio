@@ -17,7 +17,7 @@
 extern std::vector<lightTimer_t> channel[NUMBER_OF_CHANNELS];
 extern std::mutex channelMutex;
 
-extern bool saveDefaultTimers();
+extern bool saveDefaultTimers(String &result);
 extern bool loadDefaultTimers();
 extern void messageOnLcd(const char *str);
 
