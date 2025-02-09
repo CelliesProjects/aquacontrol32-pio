@@ -14,6 +14,9 @@
 #include "websocketMessage.h"
 #include "build_epoch.h"
 
+extern const char *WEBIF_USER;
+extern const char *WEBIF_PASSWORD;
+
 extern std::vector<lightTimer_t> channel[NUMBER_OF_CHANNELS];
 extern std::mutex channelMutex;
 

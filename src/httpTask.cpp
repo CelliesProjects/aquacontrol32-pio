@@ -222,7 +222,7 @@ static void setupWebserverHandlers(PsychicHttpServer &server)
 
             return request->reply(200, TEXT_PLAIN, result.c_str()); }
 
-    );
+    )->setAuthentication(WEBIF_USER, WEBIF_PASSWORD);
 
     server.onNotFound(
         [](PsychicRequest *request)
