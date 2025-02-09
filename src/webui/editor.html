@@ -172,7 +172,7 @@
 
             let draggingPoint = null;
             let rightClickedPoint = null;
-            const pointRadius = 8; // Increased radius for easier clicks
+            const pointRadius = 10; // Increased radius for easier clicks
 
             const displayTimersList = () => {
                 // Get the container where the list will be displayed
@@ -236,7 +236,7 @@
 
                 // Draw background grid
                 ctx.strokeStyle = '#ddd';
-                ctx.lineWidth = 1;
+                ctx.lineWidth = 0.7;
 
                 // Calculate the vertical position for the labels
                 const labelY = intensityToY(-6);
@@ -244,9 +244,11 @@
                 for (let i = 1; i < 24; i++) { // Exclude 0:00 and 24:00
                     const x = (i / 24) * width; // X position for the hour line
                     ctx.beginPath();
-                    ctx.moveTo(x, 0);
-                    ctx.lineTo(x, height);
+                    ctx.moveTo(x, bufferHeight);
+                    ctx.lineTo(x, height - bufferHeight);
+                    ctx.setLineDash([5, 5]);
                     ctx.stroke();
+                    ctx.setLineDash([]);
 
                     // Draw the hour labels centered on the grid lines
                     const labelText = `${i}h`;
@@ -264,7 +266,9 @@
                     ctx.moveTo(0, y);
                     ctx.lineTo(width, y);
                     ctx.strokeStyle = '#ddd'; // Light gray color for grid lines
+                    ctx.setLineDash([5, 5]);
                     ctx.stroke();
+                    ctx.setLineDash([]);
                 }
 
                 // Draw percentage values for 0%, 50%, 100% at three times (0:00-1:00, 12:00, 23:00-24:00)
@@ -307,7 +311,7 @@
 
                 // Draw timeline
                 ctx.strokeStyle = '#0077cc';
-                ctx.lineWidth = 2;
+                ctx.lineWidth = 3;
                 ctx.beginPath();
                 channelTimers.forEach((timer, index) => {
                     const x = timeToX(timer.time);
