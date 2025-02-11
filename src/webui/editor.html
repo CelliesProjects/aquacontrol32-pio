@@ -483,7 +483,7 @@
 
                 let tooltipX = rect.left + x + offset;
                 if (rect.left + x > screenWidth / 2) {
-                    tooltipX = rect.left + x - tooltipWidth - offset;
+                    tooltipX = rect.left + x - (tooltipWidth + (2 *offset));
                 }
 
                 tooltip.style.left = `${tooltipX}px`;
@@ -549,6 +549,7 @@
 
             document.addEventListener('click', (event) => {
                 if (event.target !== contextMenu && !contextMenu.contains(event.target)) {
+                    event.stopPropagation();
                     hideContextMenu();
                 }
             });
@@ -559,7 +560,6 @@
                 fetch(`/timers?channel=${channel}`)
                     .then(response => {
                         if (!response.ok) {
-                            //redrawCanvas();
                             throw new Error(`Failed to fetch timers: ${response.statusText}`);
                         }
                         return response.text();
