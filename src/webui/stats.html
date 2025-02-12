@@ -3,6 +3,60 @@
 
 <head>
     <title>System Stats</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+            /* Light background color */
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            /* Darker heading color */
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            /* Subtle table shadow */
+            background-color: white;
+            /* White table background */
+        }
+
+        th,
+        td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+            /* Light border between rows */
+        }
+
+        th {
+            background-color: #007bff;
+            /* Blue header background */
+            color: white;
+            font-weight: bold;
+            text-transform: uppercase;
+            /* Uppercase header text */
+        }
+
+        tr:hover {
+            background-color: #f0f0f0;
+            /* Light gray hover on rows */
+        }
+
+        #stats {
+            text-align: center;
+            /* Center the "Loading..." message */
+            color: #777;
+            /* Gray loading message */
+        }
+    </style>
     <script>
         async function fetchStats() {
             const response = await fetch('/api/taskstats');

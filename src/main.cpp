@@ -62,7 +62,7 @@ static void ntpCb(void *cb_arg)
     sntp_set_time_sync_notification_cb(NULL);
 
     const BaseType_t result = xTaskCreate(httpTask,
-                                          NULL,
+                                          "httpTask",
                                           4096,
                                           NULL,
                                           tskIDLE_PRIORITY,
