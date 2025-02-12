@@ -7,8 +7,6 @@
 #include <SD.h>
 #include <mutex>
 #include <optional>
-#include <sstream> // For std::stringstrea
-#include <time.h> 
 
 #include <PsychicHttp.h>
 
