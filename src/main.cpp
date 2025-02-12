@@ -35,8 +35,8 @@ static void startDimmerTask()
         return;
     }
     const auto taskResult = xTaskCreate(dimmerTask,
-                                        NULL,
-                                        4096 * 2,
+                                        "dimmerTask",
+                                        1024 * 8,
                                         NULL,
                                         tskIDLE_PRIORITY + 5,
                                         &dimmerTaskHandle);
@@ -355,8 +355,8 @@ void setup(void)
     showIPonDisplay();
 
     BaseType_t result = xTaskCreate(lcdTask,
-                                    NULL,
-                                    4096,
+                                    "lcdTask",
+                                    1024 * 3,
                                     NULL,
                                     tskIDLE_PRIORITY + 1,
                                     NULL);
@@ -368,10 +368,10 @@ void setup(void)
     }
 
     result = xTaskCreate(sensorTask,
-                         NULL,
+                         "sensorTask",
                          4096,
                          NULL,
-                         tskIDLE_PRIORITY + 1,
+                         tskIDLE_PRIORITY,
                          NULL);
     if (result != pdPASS)
     {

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>System Stats</title>
+    <script>
+        async function fetchStats() {
+            const response = await fetch('/api/taskstats');
+            if (!response.ok) {
+                console.error("Error fetching stats:", response.status, response.statusText);
+                document.getElementById('stats').innerHTML = "Error fetching data.";
+                return;
+            }
+
+            const csvData = await response.text();
+            const rows = csvData.split('\n');
+
+            const data = [];
+            const headers = rows[0].split(',');
+            for (let i = 0; i < rows.length; i++) {
+                const rowData = {};
+                const cells = rows[i].split(',');
+                for (let j = 0; j < headers.length; j++) {
+                    rowData[headers[j]] = cells[j];
+                }
+                if (cells.length > 1) {
+                    data.push(rowData);
+                }
+
+            }
+
+            // Sort by CPU% (descending)
+            data.sort((a, b) => {
+                const cpuA = parseFloat(a['CPU%']);
+                const cpuB = parseFloat(b['CPU%']);
+                return cpuB - cpuA;
+            });
+
+
+            const table = document.createElement('table');
+
+            data.forEach(item => {
+                const tr = table.insertRow();
+                for (const header of headers) {
+                    const td = tr.insertCell();
+                    let cellValue = item[header];
+                    if (header === 'CPU%') {
+                        const cpuValue = parseFloat(cellValue);
+                        if (!isNaN(cpuValue)) {
+                            cellValue = cpuValue.toFixed(2) + "%";
+                        }
+                    }
+                    td.textContent = cellValue;
+                }
+            });
+
+            document.getElementById('stats').innerHTML = '';
+            document.getElementById('stats').appendChild(table);
+        }
+
+        //setInterval(fetchStats, 1000);
+        window.onload = fetchStats;
+    </script>
+</head>
+
+<body>
+    <h1>System Statistics</h1>
+    <div id="stats">Loading...</div>
+</body>
+
+</html>

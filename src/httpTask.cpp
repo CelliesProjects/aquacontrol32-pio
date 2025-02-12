@@ -26,7 +26,6 @@ static void addStaticContentHeaders(PsychicResponse &response, const char *date,
     response.addHeader("ETag", etag);
 }
 
-// todo: this can be done at compile time
 static char etagValue[16];
 static void generateETag(const char *date)
 {
@@ -84,7 +83,103 @@ static std::optional<uint8_t> validateChannel(PsychicRequest *request)
     return channelStr[0] - '0';
 }
 
-static void setupWebserverHandlers(PsychicHttpServer &server)
+time_t time_diff(struct tm *start, struct tm *end)
+{
+    return mktime(end) - mktime(start);
+}
+/*
+static esp_err_t handleUptime(PsychicRequest *request)
+{
+
+    time_t now;
+    time(&now); // Get the current time
+
+    struct tm currentTime;
+    gmtime_r(&now, &currentTime); // Convert to struct tm
+
+    time_t uptimeSeconds = time_diff(&timeinfo, &currentTime); // Calculate the difference
+
+    // Calculate years, days, hours, minutes, and seconds
+    int years = uptimeSeconds / (60 * 60 * 24 * 365);
+    uptimeSeconds %= (60 * 60 * 24 * 365);
+    int days = uptimeSeconds / (60 * 60 * 24);
+    uptimeSeconds %= (60 * 60 * 24);
+    int hours = uptimeSeconds / (60 * 60);
+    uptimeSeconds %= (60 * 60);
+    int minutes = uptimeSeconds / 60;
+    int seconds = uptimeSeconds % 60;
+
+    // Format the uptime string
+    String uptimeString = "";
+    if (years > 0)
+    {
+        uptimeString += String(years) + " years, ";
+    }
+    if (days > 0)
+    {
+        uptimeString += String(days) + " days, ";
+    }
+    if (hours > 0)
+    {
+        uptimeString += String(hours) + " hours, ";
+    }
+    if (minutes > 0)
+    {
+        uptimeString += String(minutes) + " minutes and ";
+    }
+    uptimeString += String(seconds) + " seconds";
+
+    return request->reply(200, "text/plain", uptimeString.c_str());
+}
+*/
+
+// Function to safely calculate CPU percentage, handling wraparound
+float calculateCPUPercent(uint32_t runTime, uint32_t totalRunTime, const char* taskName)
+{
+    if (totalRunTime == 0)
+        return 0.0f; // Avoid division by zero
+
+    // Check for wraparound (compare with previous value)
+    static uint32_t previousRunTime[10]; // Store previous values for up to 10 tasks
+    static const char *taskNames[10];    // Store task names for index lookup
+    static int taskIndex = 0;
+
+    UBaseType_t maxTasks = uxTaskGetNumberOfTasks();
+    TaskStatus_t *taskArray = new TaskStatus_t[maxTasks];
+    uint32_t currentTotalRunTime;
+    UBaseType_t taskCount = uxTaskGetSystemState(taskArray, maxTasks, &currentTotalRunTime);
+    float cpuPercent = 0.0f;
+
+    for (UBaseType_t i = 0; i < taskCount; i++)
+    {
+        bool found = false;
+        for (int j = 0; j < taskIndex; j++)
+        {
+            if (strcmp(taskArray[i].pcTaskName, taskNames[j]) == 0)
+            {
+                found = true;
+                uint32_t diff = runTime - previousRunTime[j];
+                if (runTime < previousRunTime[j])
+                { // Handle wraparound
+                    diff = UINT32_MAX - previousRunTime[j] + runTime + 1;
+                }
+                cpuPercent = (float)diff * 100.0f / currentTotalRunTime;
+                previousRunTime[j] = runTime;
+                break;
+            }
+        }
+        if (!found)
+        {
+            taskNames[taskIndex] = taskArray[i].pcTaskName;
+            previousRunTime[taskIndex] = runTime;
+            taskIndex++;
+        }
+    }
+    delete[] taskArray;
+    return cpuPercent;
+}
+
+static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
 {
     server.on(
         "/", HTTP_GET, [](PsychicRequest *request)
@@ -125,6 +220,25 @@ static void setupWebserverHandlers(PsychicHttpServer &server)
     );
 
     server.on(
+        "/stats", HTTP_GET, [](PsychicRequest *request)
+        {
+            if (samePageIsCached(request, contentCreationTime, etagValue))
+                return request->reply(304);
+
+            extern const uint8_t stats_start[] asm("_binary_src_webui_stats_html_gz_start");
+            extern const uint8_t stats_end[] asm("_binary_src_webui_stats_html_gz_end");   
+
+            PsychicResponse response = PsychicResponse(request);
+            addStaticContentHeaders(response, contentCreationTime, etagValue);
+            response.addHeader(CONTENT_ENCODING, GZIP);
+            response.setContentType(TEXT_HTML);
+            const size_t size =(stats_end - stats_start);
+            response.setContent(stats_start, size);
+            return response.send(); }
+
+    );
+
+    server.on(
         "/timers", HTTP_GET, [](PsychicRequest *request)
         {
             auto validChannel = validateChannel(request);
@@ -154,8 +268,8 @@ static void setupWebserverHandlers(PsychicHttpServer &server)
     );
 
     server.on(
-        "/upload", HTTP_POST, [](PsychicRequest *request)
-        {
+              "/upload", HTTP_POST, [](PsychicRequest *request)
+              {
             auto validChannel = validateChannel(request);
             if (!validChannel) 
                 return ESP_OK;
@@ -220,9 +334,85 @@ static void setupWebserverHandlers(PsychicHttpServer &server)
             if (!saveDefaultTimers(result))
                 return request->reply(500, TEXT_PLAIN, result.c_str()); 
 
-            return request->reply(200, TEXT_PLAIN, result.c_str()); }
+            return request->reply(200, TEXT_PLAIN, result.c_str()); })
+        ->setAuthentication(WEBIF_USER, WEBIF_PASSWORD);
 
-    )->setAuthentication(WEBIF_USER, WEBIF_PASSWORD);
+    server.on(
+        "/uptime", HTTP_GET, [&timeinfo](PsychicRequest *request)
+        {
+            time_t now;
+            time(&now);
+
+            struct tm currentTime;
+            gmtime_r(&now, &currentTime);
+
+            time_t uptimeSeconds = time_diff(timeinfo, &currentTime);
+
+            int years = uptimeSeconds / (60 * 60 * 24 * 365);
+            uptimeSeconds %= (60 * 60 * 24 * 365);
+            int days = uptimeSeconds / (60 * 60 * 24);
+            uptimeSeconds %= (60 * 60 * 24);
+            int hours = uptimeSeconds / (60 * 60);
+            uptimeSeconds %= (60 * 60);
+            int minutes = uptimeSeconds / 60;
+            int seconds = uptimeSeconds % 60;
+
+            String uptimeString = "";
+            if (years > 0)
+                uptimeString += String(years) + " years, ";
+            if (days > 0)
+                uptimeString += String(days) + " days, ";
+            if (hours > 0)
+                uptimeString += String(hours) + " hours, ";
+            if (minutes > 0)
+                uptimeString += String(minutes) + " minutes and ";
+            uptimeString += String(seconds) + " seconds";
+
+            return request->reply(200, TEXT_PLAIN, uptimeString.c_str()); }
+
+    );
+
+    // In your setup() function:
+    server.on(
+        "/api/taskstats", HTTP_GET, [&timeinfo](PsychicRequest *request)
+        {
+            // Use std::vector for dynamic array (handles resizing automatically)
+            std::vector<TaskStatus_t> taskArray;
+            uint32_t totalRunTime;
+        
+            // Get the MAXIMUM number of tasks that FreeRTOS *could* support.
+            // This is a more robust approach.
+            const size_t maxPossibleTasks = 5; // Or whatever your maximum reasonable number is.
+        
+            taskArray.resize(maxPossibleTasks); // Allocate memory
+        
+            UBaseType_t taskCount = uxTaskGetSystemState(taskArray.data(), maxPossibleTasks, &totalRunTime);
+        
+            if (taskCount > maxPossibleTasks) {
+            taskCount = maxPossibleTasks; // Limit to prevent issues
+            }
+        
+            std::stringstream csvData;
+            csvData << "Name,State,Priority,Stack,Runtime,CPU%\n"; // Header row
+        
+            if (taskCount > 0) {
+            for (UBaseType_t i = 0; i < taskCount; i++) {
+                float cpuPercent = calculateCPUPercent(taskArray[i].ulRunTimeCounter, totalRunTime, taskArray[i].pcTaskName);
+                csvData << taskArray[i].pcTaskName << ","
+                        << taskArray[i].eCurrentState << ","
+                        << taskArray[i].uxCurrentPriority << ","
+                        << taskArray[i].usStackHighWaterMark << ","
+                        << taskArray[i].ulRunTimeCounter << ","
+                        << cpuPercent << "\n";
+            }
+            }
+        
+            String csvResponse = csvData.str().c_str();
+        
+            // No need to manually delete[] taskArray with std::vector!
+            return request->reply(200, "text/csv", csvResponse.c_str()); }
+
+    );
 
     server.onNotFound(
         [](PsychicRequest *request)
@@ -257,15 +447,16 @@ void httpTask(void *parameter)
             delay(100);
     }
 
-    static char contentCreationTime[30];
-    strftime(contentCreationTime, sizeof(contentCreationTime), "%a, %d %b %Y %X GMT", gmtime(&BUILD_EPOCH));
+    const time_t rawTime = time(NULL);
+    struct tm *timeinfo = gmtime(&rawTime);
+    strftime(contentCreationTime, sizeof(contentCreationTime), "%a, %d %b %Y %X GMT", timeinfo);
 
     generateETag(contentCreationTime);
 
     static PsychicHttpServer server;
     static PsychicWebSocketHandler websocketHandler;
 
-    server.config.max_uri_handlers = 10;
+    server.config.max_uri_handlers = 20;
     server.config.max_open_sockets = 8;
 
     server.listen(80);
@@ -273,7 +464,7 @@ void httpTask(void *parameter)
     setupWebsocketHandler(websocketHandler);
     server.on("/websocket", HTTP_GET, &websocketHandler);
 
-    setupWebserverHandlers(server);
+    setupWebserverHandlers(server, timeinfo);
     DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");
 
     log_i("HTTP server started at %s", WiFi.localIP().toString());
