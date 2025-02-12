@@ -87,97 +87,6 @@ time_t time_diff(struct tm *start, struct tm *end)
 {
     return mktime(end) - mktime(start);
 }
-/*
-static esp_err_t handleUptime(PsychicRequest *request)
-{
-
-    time_t now;
-    time(&now); // Get the current time
-
-    struct tm currentTime;
-    gmtime_r(&now, &currentTime); // Convert to struct tm
-
-    time_t uptimeSeconds = time_diff(&timeinfo, &currentTime); // Calculate the difference
-
-    // Calculate years, days, hours, minutes, and seconds
-    int years = uptimeSeconds / (60 * 60 * 24 * 365);
-    uptimeSeconds %= (60 * 60 * 24 * 365);
-    int days = uptimeSeconds / (60 * 60 * 24);
-    uptimeSeconds %= (60 * 60 * 24);
-    int hours = uptimeSeconds / (60 * 60);
-    uptimeSeconds %= (60 * 60);
-    int minutes = uptimeSeconds / 60;
-    int seconds = uptimeSeconds % 60;
-
-    // Format the uptime string
-    String uptimeString = "";
-    if (years > 0)
-    {
-        uptimeString += String(years) + " years, ";
-    }
-    if (days > 0)
-    {
-        uptimeString += String(days) + " days, ";
-    }
-    if (hours > 0)
-    {
-        uptimeString += String(hours) + " hours, ";
-    }
-    if (minutes > 0)
-    {
-        uptimeString += String(minutes) + " minutes and ";
-    }
-    uptimeString += String(seconds) + " seconds";
-
-    return request->reply(200, "text/plain", uptimeString.c_str());
-}
-*/
-
-// Function to safely calculate CPU percentage, handling wraparound
-float calculateCPUPercent(uint32_t runTime, uint32_t totalRunTime, const char *taskName)
-{
-    if (totalRunTime == 0)
-        return 0.0f; // Avoid division by zero
-
-    // Check for wraparound (compare with previous value)
-    static uint32_t previousRunTime[10]; // Store previous values for up to 10 tasks
-    static const char *taskNames[10];    // Store task names for index lookup
-    static int taskIndex = 0;
-
-    UBaseType_t maxTasks = uxTaskGetNumberOfTasks();
-    TaskStatus_t *taskArray = new TaskStatus_t[maxTasks];
-    uint32_t currentTotalRunTime;
-    UBaseType_t taskCount = uxTaskGetSystemState(taskArray, maxTasks, &currentTotalRunTime);
-    float cpuPercent = 0.0f;
-
-    for (UBaseType_t i = 0; i < taskCount; i++)
-    {
-        bool found = false;
-        for (int j = 0; j < taskIndex; j++)
-        {
-            if (strcmp(taskArray[i].pcTaskName, taskNames[j]) == 0)
-            {
-                found = true;
-                uint32_t diff = runTime - previousRunTime[j];
-                if (runTime < previousRunTime[j])
-                { // Handle wraparound
-                    diff = UINT32_MAX - previousRunTime[j] + runTime + 1;
-                }
-                cpuPercent = (float)diff * 100.0f / currentTotalRunTime;
-                previousRunTime[j] = runTime;
-                break;
-            }
-        }
-        if (!found)
-        {
-            taskNames[taskIndex] = taskArray[i].pcTaskName;
-            previousRunTime[taskIndex] = runTime;
-            taskIndex++;
-        }
-    }
-    delete[] taskArray;
-    return cpuPercent;
-}
 
 static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
 {
@@ -382,13 +291,13 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
 
             TaskStatus_t *pxTaskStatusArray = (TaskStatus_t *)heap_caps_malloc(taskCount * sizeof(TaskStatus_t), MALLOC_CAP_INTERNAL);
             if (!pxTaskStatusArray) {
-                return request->reply(500, "text/plain", "Memory allocation failed");
+                return request->reply(500, TEXT_PLAIN, "Memory allocation failed");
             }
 
             UBaseType_t retrievedTasks = uxTaskGetSystemState(pxTaskStatusArray, taskCount, &totalRunTime);
             if (totalRunTime == 0 || retrievedTasks == 0) {
                 heap_caps_free(pxTaskStatusArray);
-                return request->reply(500, "text/plain", "Failed to get task stats");
+                return request->reply(500, TEXT_PLAIN, "Failed to get task stats");
             }
 
             String csvResponse = "Name,State,Priority,Stack,Runtime,CPU%\n";
