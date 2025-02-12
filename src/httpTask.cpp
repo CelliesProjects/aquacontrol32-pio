@@ -134,7 +134,7 @@ static esp_err_t handleUptime(PsychicRequest *request)
 */
 
 // Function to safely calculate CPU percentage, handling wraparound
-float calculateCPUPercent(uint32_t runTime, uint32_t totalRunTime, const char* taskName)
+float calculateCPUPercent(uint32_t runTime, uint32_t totalRunTime, const char *taskName)
 {
     if (totalRunTime == 0)
         return 0.0f; // Avoid division by zero
@@ -372,44 +372,50 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
 
     );
 
-    // In your setup() function:
     server.on(
-        "/api/taskstats", HTTP_GET, [&timeinfo](PsychicRequest *request)
+        "/api/taskstats", HTTP_GET, [](PsychicRequest *request)
         {
-            // Use std::vector for dynamic array (handles resizing automatically)
-            std::vector<TaskStatus_t> taskArray;
             uint32_t totalRunTime;
-        
-            // Get the MAXIMUM number of tasks that FreeRTOS *could* support.
-            // This is a more robust approach.
-            const size_t maxPossibleTasks = 5; // Or whatever your maximum reasonable number is.
-        
-            taskArray.resize(maxPossibleTasks); // Allocate memory
-        
-            UBaseType_t taskCount = uxTaskGetSystemState(taskArray.data(), maxPossibleTasks, &totalRunTime);
-        
-            if (taskCount > maxPossibleTasks) {
-            taskCount = maxPossibleTasks; // Limit to prevent issues
+            UBaseType_t taskCount = uxTaskGetNumberOfTasks();
+
+            log_i("Task count: %u", taskCount);
+
+            TaskStatus_t *pxTaskStatusArray = (TaskStatus_t *)heap_caps_malloc(taskCount * sizeof(TaskStatus_t), MALLOC_CAP_INTERNAL);
+            if (!pxTaskStatusArray) {
+                return request->reply(500, "text/plain", "Memory allocation failed");
             }
-        
-            std::stringstream csvData;
-            csvData << "Name,State,Priority,Stack,Runtime,CPU%\n"; // Header row
-        
-            if (taskCount > 0) {
-            for (UBaseType_t i = 0; i < taskCount; i++) {
-                float cpuPercent = calculateCPUPercent(taskArray[i].ulRunTimeCounter, totalRunTime, taskArray[i].pcTaskName);
-                csvData << taskArray[i].pcTaskName << ","
-                        << taskArray[i].eCurrentState << ","
-                        << taskArray[i].uxCurrentPriority << ","
-                        << taskArray[i].usStackHighWaterMark << ","
-                        << taskArray[i].ulRunTimeCounter << ","
-                        << cpuPercent << "\n";
+
+            UBaseType_t retrievedTasks = uxTaskGetSystemState(pxTaskStatusArray, taskCount, &totalRunTime);
+            if (totalRunTime == 0 || retrievedTasks == 0) {
+                heap_caps_free(pxTaskStatusArray);
+                return request->reply(500, "text/plain", "Failed to get task stats");
             }
+
+            String csvResponse = "Name,State,Priority,Stack,Runtime,CPU%\n";
+
+            for (UBaseType_t i = 0; i < retrievedTasks; i++) {
+                const char *taskName = pxTaskStatusArray[i].pcTaskName;
+/*
+                // **Fix for nameless tasks**
+                if (!taskName || strlen(taskName) == 0) {
+                    taskName = "Unknown";
+                }
+*/
+                float cpuPercent = ((float)pxTaskStatusArray[i].ulRunTimeCounter / (float)totalRunTime) * 100.0f;
+                if (cpuPercent > 100.0f) {
+                    cpuPercent = 100.0f;
+                }
+
+                csvResponse += String(taskName) + "," +
+                            String(pxTaskStatusArray[i].eCurrentState) + "," +
+                            String(pxTaskStatusArray[i].uxCurrentPriority) + "," +
+                            String(pxTaskStatusArray[i].usStackHighWaterMark) + "," +
+                            String(pxTaskStatusArray[i].ulRunTimeCounter) + "," +
+                            String(cpuPercent, 2) + "\n";
             }
-        
-            String csvResponse = csvData.str().c_str();
-        
-            // No need to manually delete[] taskArray with std::vector!
+
+            heap_caps_free(pxTaskStatusArray);
+
             return request->reply(200, "text/csv", csvResponse.c_str()); }
 
     );
