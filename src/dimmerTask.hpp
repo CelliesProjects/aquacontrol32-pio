@@ -1,7 +1,6 @@
 #ifndef _DIMMERTASK_HPP_
 #define _DIMMERTASK_HPP_
 
-#include <Arduino.h>
 #include <esp32-hal.h>
 #include <hal/ledc_types.h>
 #include <vector>
