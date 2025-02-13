@@ -302,16 +302,8 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
 
             for (UBaseType_t i = 0; i < retrievedTasks; i++) {
                 const char *taskName = pxTaskStatusArray[i].pcTaskName;
-/*
-                // **Fix for nameless tasks**
-                if (!taskName || strlen(taskName) == 0) {
-                    taskName = "Unknown";
-                }
-*/
+
                 float cpuPercent = ((float)pxTaskStatusArray[i].ulRunTimeCounter / (float)totalRunTime) * 100.0f;
-                if (cpuPercent > 100.0f) {
-                    cpuPercent = 100.0f;
-                }
 
                 csvResponse += String(taskName) + "," +
                             String(pxTaskStatusArray[i].eCurrentState) + "," +
