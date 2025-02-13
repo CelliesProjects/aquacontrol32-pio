@@ -8,13 +8,11 @@
             font-family: sans-serif;
             margin: 20px;
             background-color: #f4f4f4;
-            /* Light background color */
         }
 
         h1 {
             text-align: center;
             color: #333;
-            /* Darker heading color */
             margin-bottom: 20px;
         }
 
@@ -23,41 +21,45 @@
             border-collapse: collapse;
             margin-top: 20px;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-            /* Subtle table shadow */
             background-color: white;
-            /* White table background */
         }
 
         th,
         td {
             padding: 10px;
-            text-align: left;
+            text-align: center;
             border-bottom: 1px solid #ddd;
-            /* Light border between rows */
+        }
+
+        td:first-child {
+            text-align: left;
         }
 
         th {
             background-color: #007bff;
-            /* Blue header background */
             color: white;
             font-weight: bold;
             text-transform: uppercase;
-            /* Uppercase header text */
         }
 
         tr:hover {
             background-color: #f0f0f0;
-            /* Light gray hover on rows */
         }
 
         #stats {
             text-align: center;
-            /* Center the "Loading..." message */
             color: #777;
-            /* Gray loading message */
         }
     </style>
     <script>
+        const taskStates = {
+            0: "Running",
+            1: "Ready",
+            2: "Blocked",
+            3: "Suspended",
+            4: "Deleted"
+        };
+
         async function fetchStats() {
             const response = await fetch('/api/taskstats');
             if (!response.ok) {
@@ -68,51 +70,51 @@
 
             const csvData = await response.text();
             const rows = csvData.split('\n');
-
             const data = [];
             const headers = rows[0].split(',');
-            for (let i = 0; i < rows.length; i++) {
-                const rowData = {};
+
+            for (let i = 1; i < rows.length; i++) {
                 const cells = rows[i].split(',');
+                if (cells.length < headers.length) continue;
+
+                const rowData = {};
                 for (let j = 0; j < headers.length; j++) {
                     rowData[headers[j]] = cells[j];
                 }
-                if (cells.length > 1) {
-                    data.push(rowData);
-                }
-
+                data.push(rowData);
             }
 
-            // Sort by CPU% (descending)
-            data.sort((a, b) => {
-                const cpuA = parseFloat(a['CPU%']);
-                const cpuB = parseFloat(b['CPU%']);
-                return cpuB - cpuA;
-            });
-
+            data.sort((a, b) => parseFloat(b['CPU%']) - parseFloat(a['CPU%']));
 
             const table = document.createElement('table');
+            const thead = table.createTHead();
+            const headerRow = thead.insertRow();
+            headers.forEach(header => {
+                const th = document.createElement('th');
+                th.textContent = header;
+                headerRow.appendChild(th);
+            });
 
+            const tbody = table.createTBody();
             data.forEach(item => {
-                const tr = table.insertRow();
-                for (const header of headers) {
+                const tr = tbody.insertRow();
+                headers.forEach(header => {
                     const td = tr.insertCell();
                     let cellValue = item[header];
-                    if (header === 'CPU%') {
+                    if (header === 'State') {
+                        cellValue = taskStates[cellValue] || "Unknown";
+                    } else if (header === 'CPU%') {
                         const cpuValue = parseFloat(cellValue);
-                        if (!isNaN(cpuValue)) {
-                            cellValue = cpuValue.toFixed(2) + "%";
-                        }
+                        cellValue = isNaN(cpuValue) ? cellValue : cpuValue.toFixed(2) + "%";
                     }
                     td.textContent = cellValue;
-                }
+                });
             });
 
             document.getElementById('stats').innerHTML = '';
             document.getElementById('stats').appendChild(table);
         }
 
-        //setInterval(fetchStats, 1000);
         window.onload = fetchStats;
     </script>
 </head>
