@@ -369,7 +369,7 @@ void httpTask(void *parameter)
     static PsychicHttpServer server;
     static PsychicWebSocketHandler websocketHandler;
 
-    server.config.max_uri_handlers = 20;
+    server.config.max_uri_handlers = 10;
     server.config.max_open_sockets = 8;
 
     server.listen(80);
