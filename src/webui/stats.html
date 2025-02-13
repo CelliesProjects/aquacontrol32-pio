@@ -50,6 +50,18 @@
             text-align: center;
             color: #777;
         }
+
+        #state-explanation {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: white;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
+        }
+
+        #state-explanation h2 {
+            color: #007bff;
+        }
     </style>
     <script>
         const taskStates = {
@@ -122,6 +134,17 @@
 <body>
     <h1>System Statistics</h1>
     <div id="stats">Loading...</div>
+
+    <div id="state-explanation">
+        <h2>Task States Explanation</h2>
+        <ul>
+            <li><strong>Running</strong>: The task is currently executing on the CPU.</li>
+            <li><strong>Ready</strong>: The task is ready to run but is waiting for CPU time.</li>
+            <li><strong>Blocked</strong>: The task is waiting for an event before it can continue.</li>
+            <li><strong>Suspended</strong>: The task has been explicitly paused and will not run until resumed.</li>
+            <li><strong>Deleted</strong>: The task has been deleted and is awaiting cleanup.</li>
+        </ul>
+    </div>
 </body>
 
 </html>
