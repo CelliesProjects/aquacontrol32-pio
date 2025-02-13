@@ -48,14 +48,6 @@ void dimmerTask(void *parameter)
     moonPhase moonPhase;
     moonData_t moon = moonPhase.getPhase();
 
-    {
-        lcdMessage_t msg;
-        msg.type = lcdMessageType::MOON_PHASE;
-        msg.float1 = moon.percentLit * 100;
-        msg.int1 = moon.angle;
-        xQueueSend(lcdQueue, &msg, portMAX_DELAY);
-    }
-
     constexpr int TICK_RATE_HZ = 100;
     constexpr TickType_t ticksToWait = pdTICKS_TO_MS(1000 / TICK_RATE_HZ);
     TickType_t xLastWakeTime = xTaskGetTickCount();
@@ -128,20 +120,6 @@ void dimmerTask(void *parameter)
             lastLcdRefresh = millis();
         }
 
-        constexpr int MOON_UPDATE_INTERVAL_SECONDS = 5;
-        static time_t lastMoonUpdate = time(NULL);
-        if (time(NULL) - lastMoonUpdate >= MOON_UPDATE_INTERVAL_SECONDS)
-        {
-            moon = moonPhase.getPhase();
-            lastMoonUpdate = time(NULL);
-            log_d("moon visible %f angle %i", moon.percentLit * 100, moon.angle);
-
-            lcdMessage_t msg;
-            msg.type = lcdMessageType::MOON_PHASE;
-            msg.float1 = moon.percentLit * 100;
-            msg.int1 = moon.angle;
-            xQueueSend(lcdQueue, &msg, portMAX_DELAY);
-        }
         /*
                 static int lps = 0;
                 lps++;

@@ -1,12 +1,11 @@
-#ifndef _LCD_MESSAGE_T_
-#define _LCD_MESSAGE_T_
+#ifndef _LCDMESSAGE_H_
+#define _LCDMESSAGE_H_
 
 enum lcdMessageType
 {
     SET_BRIGHTNESS,
     LCD_SYSTEM_MESSAGE,
     UPDATE_LIGHTS,
-    MOON_PHASE,
     TEMPERATURE,
     SHOW_IP
 };

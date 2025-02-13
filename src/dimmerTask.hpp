@@ -1,5 +1,5 @@
-#ifndef _DIMMER_TASK_
-#define _DIMMER_TASK_
+#ifndef _DIMMERTASK_HPP_
+#define _DIMMERTASK_HPP_
 
 #include <Arduino.h>
 #include <esp32-hal.h>

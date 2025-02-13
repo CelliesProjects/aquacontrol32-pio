@@ -1,7 +1,5 @@
-#ifndef _LIGHT_TIMER_T_
-#define _LIGHT_TIMER_T_
-
-#include <Arduino.h>
+#ifndef _LIGHTTIMER_H_
+#define _LIGHTTIMER_H_
 
 struct lightTimer_t
 {
