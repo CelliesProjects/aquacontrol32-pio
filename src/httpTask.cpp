@@ -323,7 +323,7 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
 
             heap_caps_free(pxTaskStatusArray);
 
-            return request->reply(200, "text/csv", csvResponse.c_str()); }
+            return request->reply(200, TEXT_PLAIN, csvResponse.c_str()); }
 
     );
 
@@ -331,7 +331,7 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
         [](PsychicRequest *request)
         {
             log_e("404 - Not found: 'http://%s%s'", request->host().c_str(), request->url().c_str());
-            return request->reply(404, TEXT_HTML, "<h1>FOUR OH FOUR NOT FOUND</h1>"); }
+            return request->reply(404, TEXT_HTML, "<h1>404 - Not found</h1>"); }
 
     );
 
