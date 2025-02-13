@@ -129,25 +129,6 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
     );
 
     server.on(
-        "/stats", HTTP_GET, [](PsychicRequest *request)
-        {
-            if (samePageIsCached(request, contentCreationTime, etagValue))
-                return request->reply(304);
-
-            extern const uint8_t stats_start[] asm("_binary_src_webui_stats_html_gz_start");
-            extern const uint8_t stats_end[] asm("_binary_src_webui_stats_html_gz_end");   
-
-            PsychicResponse response = PsychicResponse(request);
-            addStaticContentHeaders(response, contentCreationTime, etagValue);
-            response.addHeader(CONTENT_ENCODING, GZIP);
-            response.setContentType(TEXT_HTML);
-            const size_t size =(stats_end - stats_start);
-            response.setContent(stats_start, size);
-            return response.send(); }
-
-    );
-
-    server.on(
         "/timers", HTTP_GET, [](PsychicRequest *request)
         {
             auto validChannel = validateChannel(request);
@@ -281,6 +262,7 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
 
     );
 
+#ifndef CORE_DEBUG_LEVEL
     server.on(
         "/api/taskstats", HTTP_GET, [](PsychicRequest *request)
         {
@@ -318,6 +300,26 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
             return request->reply(200, TEXT_PLAIN, csvResponse.c_str()); }
 
     );
+
+    server.on(
+        "/stats", HTTP_GET, [](PsychicRequest *request)
+        {
+            if (samePageIsCached(request, contentCreationTime, etagValue))
+                return request->reply(304);
+
+            extern const uint8_t stats_start[] asm("_binary_src_webui_stats_html_gz_start");
+            extern const uint8_t stats_end[] asm("_binary_src_webui_stats_html_gz_end");   
+
+            PsychicResponse response = PsychicResponse(request);
+            addStaticContentHeaders(response, contentCreationTime, etagValue);
+            response.addHeader(CONTENT_ENCODING, GZIP);
+            response.setContentType(TEXT_HTML);
+            const size_t size =(stats_end - stats_start);
+            response.setContent(stats_start, size);
+            return response.send(); }
+
+    );
+#endif
 
     server.onNotFound(
         [](PsychicRequest *request)
