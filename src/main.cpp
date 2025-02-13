@@ -200,8 +200,6 @@ static void parseTimerFile(File &file)
                 channel[index].push_back({MAX_TIME, 0});
             }
     }
-
-    log_v("read %i lines", currentLine);
 }
 
 bool saveDefaultTimers(String &result)
