@@ -38,7 +38,7 @@ static void startDimmerTask()
                                         "dimmerTask",
                                         1024 * 8,
                                         NULL,
-                                        tskIDLE_PRIORITY + 5,
+                                        tskIDLE_PRIORITY + 6,
                                         &dimmerTaskHandle);
     if (taskResult != pdPASS)
     {

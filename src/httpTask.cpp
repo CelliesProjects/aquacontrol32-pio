@@ -287,8 +287,6 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
             uint32_t totalRunTime;
             UBaseType_t taskCount = uxTaskGetNumberOfTasks();
 
-            log_i("Task count: %u", taskCount);
-
             TaskStatus_t *pxTaskStatusArray = (TaskStatus_t *)heap_caps_malloc(taskCount * sizeof(TaskStatus_t), MALLOC_CAP_INTERNAL);
             if (!pxTaskStatusArray) {
                 return request->reply(500, TEXT_PLAIN, "Memory allocation failed");
