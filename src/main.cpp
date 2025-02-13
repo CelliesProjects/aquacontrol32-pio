@@ -34,12 +34,14 @@ static void startDimmerTask()
         log_e("can not start dimmerTask - task already running");
         return;
     }
-    const auto taskResult = xTaskCreate(dimmerTask,
-                                        "dimmerTask",
-                                        1024 * 8,
-                                        NULL,
-                                        tskIDLE_PRIORITY + 6,
-                                        &dimmerTaskHandle);
+
+    const auto taskResult = xTaskCreatePinnedToCore(dimmerTask,
+                                                    "dimmerTask",
+                                                    1024 * 8,
+                                                    NULL,
+                                                    tskIDLE_PRIORITY + 5,
+                                                    &dimmerTaskHandle,
+                                                    APP_CPU_NUM);
     if (taskResult != pdPASS)
     {
         log_e("could not start dimmerTask. system halted!");
@@ -354,12 +356,13 @@ void setup(void)
 
     showIPonDisplay();
 
-    BaseType_t result = xTaskCreate(lcdTask,
-                                    "lcdTask",
-                                    1024 * 3,
-                                    NULL,
-                                    tskIDLE_PRIORITY + 1,
-                                    NULL);
+    BaseType_t result = xTaskCreatePinnedToCore(lcdTask,
+                                                "lcdTask",
+                                                1024 * 3,
+                                                NULL,
+                                                tskIDLE_PRIORITY + 1,
+                                                NULL,
+                                                APP_CPU_NUM);
     if (result != pdPASS)
     {
         log_e("could not start lcdTask. system halted!");
