@@ -1,7 +1,6 @@
-#ifndef _HTTP_TASK_
-#define _HTTP_TASK_
+#ifndef _HTTPTASK_HPP_
+#define _HTTPTASK_HPP_
 
-#include <Arduino.h>
 #include <WiFi.h>
 #include <FS.h>
 #include <SD.h>

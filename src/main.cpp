@@ -34,12 +34,14 @@ static void startDimmerTask()
         log_e("can not start dimmerTask - task already running");
         return;
     }
-    const auto taskResult = xTaskCreate(dimmerTask,
-                                        NULL,
-                                        4096 * 2,
-                                        NULL,
-                                        tskIDLE_PRIORITY + 5,
-                                        &dimmerTaskHandle);
+
+    const auto taskResult = xTaskCreatePinnedToCore(dimmerTask,
+                                                    "dimmerTask",
+                                                    1024 * 8,
+                                                    NULL,
+                                                    tskIDLE_PRIORITY + 5,
+                                                    &dimmerTaskHandle,
+                                                    APP_CPU_NUM);
     if (taskResult != pdPASS)
     {
         log_e("could not start dimmerTask. system halted!");
@@ -62,7 +64,7 @@ static void ntpCb(void *cb_arg)
     sntp_set_time_sync_notification_cb(NULL);
 
     const BaseType_t result = xTaskCreate(httpTask,
-                                          NULL,
+                                          "httpTask",
                                           4096,
                                           NULL,
                                           tskIDLE_PRIORITY,
@@ -198,8 +200,6 @@ static void parseTimerFile(File &file)
                 channel[index].push_back({MAX_TIME, 0});
             }
     }
-
-    log_v("read %i lines", currentLine);
 }
 
 bool saveDefaultTimers(String &result)
@@ -354,12 +354,13 @@ void setup(void)
 
     showIPonDisplay();
 
-    BaseType_t result = xTaskCreate(lcdTask,
-                                    NULL,
-                                    4096,
-                                    NULL,
-                                    tskIDLE_PRIORITY + 1,
-                                    NULL);
+    BaseType_t result = xTaskCreatePinnedToCore(lcdTask,
+                                                "lcdTask",
+                                                1024 * 3,
+                                                NULL,
+                                                tskIDLE_PRIORITY + 1,
+                                                NULL,
+                                                APP_CPU_NUM);
     if (result != pdPASS)
     {
         log_e("could not start lcdTask. system halted!");
@@ -368,10 +369,10 @@ void setup(void)
     }
 
     result = xTaskCreate(sensorTask,
-                         NULL,
+                         "sensorTask",
                          4096,
                          NULL,
-                         tskIDLE_PRIORITY + 1,
+                         tskIDLE_PRIORITY,
                          NULL);
     if (result != pdPASS)
     {

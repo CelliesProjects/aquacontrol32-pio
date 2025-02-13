@@ -1,13 +1,10 @@
-#ifndef _WEBSOCKET_MESSAGE_
-#define _WEBSOCKET_MESSAGE_
-
-#include <stdint.h>
+#ifndef _WEBSOCKETMESSAGE_H_
+#define _WEBSOCKETMESSAGE_H_
 
 enum websocketMessageType
 {
     LIGHT_UPDATE,
     TEMPERATURE_UPDATE,
-    // MOON_UPDATE
 };
 
 struct websocketMessage

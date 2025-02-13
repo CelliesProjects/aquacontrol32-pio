@@ -26,7 +26,6 @@ static void addStaticContentHeaders(PsychicResponse &response, const char *date,
     response.addHeader("ETag", etag);
 }
 
-// todo: this can be done at compile time
 static char etagValue[16];
 static void generateETag(const char *date)
 {
@@ -84,7 +83,12 @@ static std::optional<uint8_t> validateChannel(PsychicRequest *request)
     return channelStr[0] - '0';
 }
 
-static void setupWebserverHandlers(PsychicHttpServer &server)
+time_t time_diff(struct tm *start, struct tm *end)
+{
+    return mktime(end) - mktime(start);
+}
+
+static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
 {
     server.on(
         "/", HTTP_GET, [](PsychicRequest *request)
@@ -154,8 +158,8 @@ static void setupWebserverHandlers(PsychicHttpServer &server)
     );
 
     server.on(
-        "/upload", HTTP_POST, [](PsychicRequest *request)
-        {
+              "/upload", HTTP_POST, [](PsychicRequest *request)
+              {
             auto validChannel = validateChannel(request);
             if (!validChannel) 
                 return ESP_OK;
@@ -220,15 +224,108 @@ static void setupWebserverHandlers(PsychicHttpServer &server)
             if (!saveDefaultTimers(result))
                 return request->reply(500, TEXT_PLAIN, result.c_str()); 
 
-            return request->reply(200, TEXT_PLAIN, result.c_str()); }
+            return request->reply(200, TEXT_PLAIN, result.c_str()); })
+        ->setAuthentication(WEBIF_USER, WEBIF_PASSWORD);
 
-    )->setAuthentication(WEBIF_USER, WEBIF_PASSWORD);
+    server.on(
+        "/uptime", HTTP_GET, [&timeinfo](PsychicRequest *request)
+        {
+            time_t now;
+            time(&now);
+
+            struct tm currentTime;
+            gmtime_r(&now, &currentTime);
+
+            time_t uptimeSeconds = time_diff(timeinfo, &currentTime);
+
+            int years = uptimeSeconds / (60 * 60 * 24 * 365);
+            uptimeSeconds %= (60 * 60 * 24 * 365);
+            int days = uptimeSeconds / (60 * 60 * 24);
+            uptimeSeconds %= (60 * 60 * 24);
+            int hours = uptimeSeconds / (60 * 60);
+            uptimeSeconds %= (60 * 60);
+            int minutes = uptimeSeconds / 60;
+            int seconds = uptimeSeconds % 60;
+
+            String uptimeString = "";
+            if (years > 0)
+                uptimeString += String(years) + " years, ";
+            if (days > 0)
+                uptimeString += String(days) + " days, ";
+            if (hours > 0)
+                uptimeString += String(hours) + " hours, ";
+            if (minutes > 0)
+                uptimeString += String(minutes) + " minutes and ";
+            uptimeString += String(seconds) + " seconds";
+
+            return request->reply(200, TEXT_PLAIN, uptimeString.c_str()); }
+
+    );
+
+#if defined(CORE_DEBUG_LEVEL) && (CORE_DEBUG_LEVEL >= 4)
+    server.on(
+        "/api/taskstats", HTTP_GET, [](PsychicRequest *request)
+        {
+            uint32_t totalRunTime;
+            UBaseType_t taskCount = uxTaskGetNumberOfTasks();
+
+            TaskStatus_t *pxTaskStatusArray = (TaskStatus_t *)heap_caps_malloc(taskCount * sizeof(TaskStatus_t), MALLOC_CAP_INTERNAL);
+            if (!pxTaskStatusArray) {
+                return request->reply(500, TEXT_PLAIN, "Memory allocation failed");
+            }
+
+            UBaseType_t retrievedTasks = uxTaskGetSystemState(pxTaskStatusArray, taskCount, &totalRunTime);
+            if (totalRunTime == 0 || retrievedTasks == 0) {
+                heap_caps_free(pxTaskStatusArray);
+                return request->reply(500, TEXT_PLAIN, "Failed to get task stats");
+            }
+
+            String csvResponse = "Name,State,Priority,Stack,Runtime,CPU%\n";
+
+            for (UBaseType_t i = 0; i < retrievedTasks; i++) {
+                const char *taskName = pxTaskStatusArray[i].pcTaskName;
+
+                float cpuPercent = ((float)pxTaskStatusArray[i].ulRunTimeCounter / (float)totalRunTime) * 100.0f;
+
+                csvResponse += String(taskName) + "," +
+                            String(pxTaskStatusArray[i].eCurrentState) + "," +
+                            String(pxTaskStatusArray[i].uxCurrentPriority) + "," +
+                            String(pxTaskStatusArray[i].usStackHighWaterMark) + "," +
+                            String(pxTaskStatusArray[i].ulRunTimeCounter) + "," +
+                            String(cpuPercent, 2) + "\n";
+            }
+
+            heap_caps_free(pxTaskStatusArray);
+
+            return request->reply(200, TEXT_PLAIN, csvResponse.c_str()); }
+
+    );
+
+    server.on(
+        "/stats", HTTP_GET, [](PsychicRequest *request)
+        {
+            if (samePageIsCached(request, contentCreationTime, etagValue))
+                return request->reply(304);
+
+            extern const uint8_t stats_start[] asm("_binary_src_webui_stats_html_gz_start");
+            extern const uint8_t stats_end[] asm("_binary_src_webui_stats_html_gz_end");   
+
+            PsychicResponse response = PsychicResponse(request);
+            addStaticContentHeaders(response, contentCreationTime, etagValue);
+            response.addHeader(CONTENT_ENCODING, GZIP);
+            response.setContentType(TEXT_HTML);
+            const size_t size =(stats_end - stats_start);
+            response.setContent(stats_start, size);
+            return response.send(); }
+
+    );
+#endif
 
     server.onNotFound(
         [](PsychicRequest *request)
         {
             log_e("404 - Not found: 'http://%s%s'", request->host().c_str(), request->url().c_str());
-            return request->reply(404, TEXT_HTML, "<h1>FOUR OH FOUR NOT FOUND</h1>"); }
+            return request->reply(404, TEXT_HTML, "<h1>404 - Not found</h1>"); }
 
     );
 
@@ -257,8 +354,9 @@ void httpTask(void *parameter)
             delay(100);
     }
 
-    static char contentCreationTime[30];
-    strftime(contentCreationTime, sizeof(contentCreationTime), "%a, %d %b %Y %X GMT", gmtime(&BUILD_EPOCH));
+    const time_t rawTime = time(NULL);
+    struct tm *timeinfo = gmtime(&rawTime);
+    strftime(contentCreationTime, sizeof(contentCreationTime), "%a, %d %b %Y %X GMT", timeinfo);
 
     generateETag(contentCreationTime);
 
@@ -273,7 +371,7 @@ void httpTask(void *parameter)
     setupWebsocketHandler(websocketHandler);
     server.on("/websocket", HTTP_GET, &websocketHandler);
 
-    setupWebserverHandlers(server);
+    setupWebserverHandlers(server, timeinfo);
     DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");
 
     log_i("HTTP server started at %s", WiFi.localIP().toString());

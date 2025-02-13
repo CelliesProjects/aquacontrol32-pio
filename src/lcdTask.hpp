@@ -1,5 +1,5 @@
-#ifndef _DISPLAY_TASK_
-#define _DISPLAY_TASK_
+#ifndef _LCDTASK_HPP_
+#define _LCDTASK_HPP_
 
 #define LGFX_AUTODETECT
 #include <LGFX_AUTODETECT.hpp>
