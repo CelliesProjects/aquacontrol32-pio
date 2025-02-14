@@ -6,6 +6,7 @@
 #include <SD.h>
 #include <mutex>
 #include <optional>
+#include <freertos/semphr.h>
 
 #include <PsychicHttp.h>
 
@@ -18,6 +19,7 @@ extern const char *WEBIF_PASSWORD;
 
 extern std::vector<lightTimer_t> channel[NUMBER_OF_CHANNELS];
 extern std::mutex channelMutex;
+extern SemaphoreHandle_t spiMutex;
 
 extern bool saveDefaultTimers(String &result);
 extern bool loadDefaultTimers();

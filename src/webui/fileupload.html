@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Upload</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+
+        #drop-area {
+            width: 300px;
+            height: 150px;
+            border: 2px dashed #666;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 20px auto;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>Upload a File</h2>
+    <div id="drop-area">Drop file here or click to select</div>
+    <input type="file" id="file-input" style="display: none;" />
+
+    <script>
+        const dropArea = document.getElementById("drop-area");
+        const fileInput = document.getElementById("file-input");
+        const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+
+        dropArea.addEventListener("click", () => fileInput.click());
+        fileInput.addEventListener("change", (e) => handleFile(e.target.files[0]));
+
+        dropArea.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            dropArea.style.borderColor = "blue";
+        });
+
+        dropArea.addEventListener("dragleave", () => dropArea.style.borderColor = "#666");
+
+        dropArea.addEventListener("drop", (e) => {
+            e.preventDefault();
+            dropArea.style.borderColor = "#666";
+            if (e.dataTransfer.files.length > 0) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        function handleFile(file) {
+            if (!file) return;
+            if (file.size > MAX_SIZE) {
+                alert("File is too large! Max 5MB allowed.");
+                return;
+            }
+            uploadFile(file);
+        }
+
+        function uploadFile(file) {
+            const formData = new FormData();
+            formData.append("file", file);
+
+            fetch("/upload", {
+                method: "POST",
+                body: formData
+            })
+                .then(response => {
+                    if (!response.ok) throw new Error("Upload failed");
+                    return response.text();
+                })
+                .then(() => alert("File uploaded successfully!"))
+                .catch(() => alert("Error uploading file."));
+        }
+    </script>
+</body>
+
+</html>

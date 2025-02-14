@@ -202,6 +202,57 @@ static void parseTimerFile(File &file)
     }
 }
 
+
+bool saveFile(const char *filename, String &result)
+{
+    if (!spiMutex)
+    {
+        result = "SPI mutex not initialized";
+        log_e("%s", result.c_str());
+        return false;
+    }
+
+    if (xSemaphoreTake(spiMutex, pdMS_TO_TICKS(1000)))
+    {
+        if (!SD.begin(SDCARD_SS))
+        {
+            xSemaphoreGive(spiMutex);
+            result = "SD initialization failed.\n\nPlease insert an SD card and retry.\n\nClick OK to continue.";
+            log_e("%s", result.c_str());
+            return false;
+        }
+
+        File file = SD.open(filename, FILE_WRITE);
+        if (!file)
+        {
+            SD.end();
+            xSemaphoreGive(spiMutex);
+            result = "Failed to open ";
+            result.concat(filename);
+            result.concat(" for writing.");
+            log_e("%s", result.c_str());
+            return false;
+        }
+
+        // save the file
+
+        file.close();
+        SD.end();
+
+        xSemaphoreGive(spiMutex);
+        result = "Saved file as ";
+        result.concat(filename);
+        log_i("%s", result.c_str());
+        return true;
+    }
+    else
+    {
+        result = "SPI mutex timeout.";
+        log_e("%s", result.c_str());
+        return false;
+    }
+}
+
 bool saveDefaultTimers(String &result)
 {
     if (!spiMutex)
