@@ -261,10 +261,10 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
                   String file = request->body();
                   size_t fileSize = file.length();
 
-                  log_d("Receiving file: %s (%u bytes)", fileName.c_str(), fileSize);
-
                   if (fileSize == 0)
                       return request->reply(400, TEXT_PLAIN, "File is empty");
+
+                  log_d("Received file: %s (%u bytes)", fileName.c_str(), fileSize);
 
                   ScopedMutex mutexGuard(spiMutex);
 
