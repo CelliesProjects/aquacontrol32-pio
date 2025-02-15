@@ -21,6 +21,26 @@
             margin: 20px auto;
             cursor: pointer;
         }
+
+        #progress-container {
+            width: 300px;
+            height: 20px;
+            background-color: #eee;
+            margin: 10px auto;
+            display: none;
+            position: relative;
+        }
+
+        #progress-bar {
+            height: 100%;
+            width: 0;
+            background-color: #4caf50;
+        }
+
+        #status {
+            margin-top: 10px;
+            font-weight: bold;
+        }
     </style>
 </head>
 
@@ -28,11 +48,18 @@
     <h2>Upload a File</h2>
     <div id="drop-area">Drop file here or click to select</div>
     <input type="file" id="file-input" style="display: none;" />
+    <div id="progress-container">
+        <div id="progress-bar"></div>
+    </div>
+    <p id="status"></p>
 
     <script>
         const dropArea = document.getElementById("drop-area");
         const fileInput = document.getElementById("file-input");
-        const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+        const progressBar = document.getElementById("progress-bar");
+        const progressContainer = document.getElementById("progress-container");
+        const statusText = document.getElementById("status");
+        const MAX_SIZE = 16383; // 16kB
 
         dropArea.addEventListener("click", () => fileInput.click());
         fileInput.addEventListener("change", (e) => handleFile(e.target.files[0]));
@@ -55,7 +82,7 @@
         function handleFile(file) {
             if (!file) return;
             if (file.size > MAX_SIZE) {
-                alert("File is too large! Max 5MB allowed.");
+                setStatus("File is too large! Max 16kB allowed.", "red");
                 return;
             }
             uploadFile(file);
@@ -65,16 +92,39 @@
             const formData = new FormData();
             formData.append("file", file);
 
-            fetch("/upload", {
-                method: "POST",
-                body: formData
-            })
-                .then(response => {
-                    if (!response.ok) throw new Error("Upload failed");
-                    return response.text();
-                })
-                .then(() => alert("File uploaded successfully!"))
-                .catch(() => alert("Error uploading file."));
+            const xhr = new XMLHttpRequest();
+            xhr.open("POST", "/api/upload?filename=" + file.name, true);
+
+            xhr.upload.onprogress = (e) => {
+                if (e.lengthComputable) {
+                    const percentComplete = (e.loaded / e.total) * 100;
+                    progressBar.style.width = percentComplete + "%";
+                    setStatus("Uploading... " + Math.round(percentComplete) + "%", "blue");
+                }
+            };
+
+            xhr.onloadstart = () => {
+                progressContainer.style.display = "block";
+                progressBar.style.width = "0%";
+                setStatus("Starting upload...", "blue");
+            };
+
+            xhr.onload = () => {
+                progressContainer.style.display = "none";
+                if (xhr.status === 200) {
+                    setStatus("File uploaded successfully!", "green");
+                } else {
+                    setStatus("Upload failed: " + xhr.responseText, "red");
+                }
+            };
+
+            xhr.onerror = () => setStatus("Error uploading file.", "red");
+            xhr.send(formData);
+        }
+
+        function setStatus(message, color) {
+            statusText.textContent = message;
+            statusText.style.color = color;
         }
     </script>
 </body>
