@@ -270,9 +270,6 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
                           return request->reply(500, TEXT_PLAIN, "Failed to mount SD");
                       }
 
-                      if (SD.exists(filePath))
-                          log_w("File %s already exists, overwriting", filePath.c_str());
-
                       File destFile = SD.open(filePath, FILE_WRITE);
                       if (!destFile)
                       {
