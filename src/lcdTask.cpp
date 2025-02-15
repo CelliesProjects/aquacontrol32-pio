@@ -1,4 +1,5 @@
 #include "lcdTask.hpp"
+#include "ScopedMutex.h"
 
 float mapf(const float x, const float in_min, const float in_max, const float out_min, const float out_max)
 {
@@ -215,10 +216,21 @@ void handleNextMessage()
 
 void lcdTask(void *parameter)
 {
-    if (xSemaphoreTake(spiMutex, portMAX_DELAY))
+    if (!spiMutex)
     {
+        log_e("SPI mutex not initialized");
+        vTaskDelete(NULL);
+    }
+
+    {
+        ScopedMutex lock(spiMutex);
+        if (!lock.acquired())
+        {
+            log_e("Failed to acquire SPI mutex for display initialization");
+            vTaskDelete(NULL);
+        }
+
         lcd.init();
-        xSemaphoreGive(spiMutex);
     }
 
     while (1)
@@ -226,12 +238,15 @@ void lcdTask(void *parameter)
         lcdMessage_t dummy;
         if (xQueuePeek(lcdQueue, &dummy, portMAX_DELAY))
         {
-            if (xSemaphoreTake(spiMutex, 0))
+            ScopedMutex lock(spiMutex);
+            if (!lock.acquired())
             {
-                handleNextMessage();
-                // handleClock(); // here we hitch a ride on the fact that dimmerTask will send a msg every couple of milliseconds
-                xSemaphoreGive(spiMutex);
+                log_w("Failed to acquire SPI mutex for display handling - dropped a message");
+                continue;
             }
+
+            handleNextMessage();
+            // handleClock();
         }
     }
 }
