@@ -8,6 +8,7 @@
 #include <vector>
 #include <mutex>
 
+#include "ScopedMutex.h"
 #include "secrets.h"
 #include "lcdMessage.h"
 #include "lightTimer.h"
@@ -202,57 +203,6 @@ static void parseTimerFile(File &file)
     }
 }
 
-
-bool saveFile(const char *filename, String &result)
-{
-    if (!spiMutex)
-    {
-        result = "SPI mutex not initialized";
-        log_e("%s", result.c_str());
-        return false;
-    }
-
-    if (xSemaphoreTake(spiMutex, pdMS_TO_TICKS(1000)))
-    {
-        if (!SD.begin(SDCARD_SS))
-        {
-            xSemaphoreGive(spiMutex);
-            result = "SD initialization failed.\n\nPlease insert an SD card and retry.\n\nClick OK to continue.";
-            log_e("%s", result.c_str());
-            return false;
-        }
-
-        File file = SD.open(filename, FILE_WRITE);
-        if (!file)
-        {
-            SD.end();
-            xSemaphoreGive(spiMutex);
-            result = "Failed to open ";
-            result.concat(filename);
-            result.concat(" for writing.");
-            log_e("%s", result.c_str());
-            return false;
-        }
-
-        // save the file
-
-        file.close();
-        SD.end();
-
-        xSemaphoreGive(spiMutex);
-        result = "Saved file as ";
-        result.concat(filename);
-        log_i("%s", result.c_str());
-        return true;
-    }
-    else
-    {
-        result = "SPI mutex timeout.";
-        log_e("%s", result.c_str());
-        return false;
-    }
-}
-
 bool saveDefaultTimers(String &result)
 {
     if (!spiMutex)
@@ -262,57 +212,51 @@ bool saveDefaultTimers(String &result)
         return false;
     }
 
-    if (xSemaphoreTake(spiMutex, pdMS_TO_TICKS(1000)))
+    ScopedMutex mutexGuard(spiMutex);
+
+    if (!mutexGuard.acquired())
     {
-        // there is an issue here with esp32-s3 box not saving timers
-        // see: https://github.com/lovyan03/LovyanGFX/issues/569
-        // and https://github.com/lovyan03/LovyanGFX/issues/617
-        if (!SD.begin(SDCARD_SS))
-        {
-            xSemaphoreGive(spiMutex);
-            result = "SD initialization failed.\n\nPlease insert an SD card and retry.\n\nClick OK to continue.";
-            log_e("%s", result.c_str());
-            return false;
-        }
-
-        File file = SD.open(DEFAULT_TIMERFILE, FILE_WRITE);
-        if (!file)
-        {
-            SD.end();
-            xSemaphoreGive(spiMutex);
-            result = "Failed to open ";
-            result.concat(DEFAULT_TIMERFILE);
-            result.concat(" for writing.");
-            log_e("%s", result.c_str());
-            return false;
-        }
-
-        {
-            std::lock_guard<std::mutex> lock(channelMutex);
-            for (int i = 0; i < NUMBER_OF_CHANNELS; ++i)
-            {
-                file.printf("[%d]\n", i); // Write channel header
-                for (const auto &timer : channel[i])
-                    if (timer.time != 86400)
-                        file.printf("%d,%d\n", timer.time, timer.percentage);
-            }
-        }
-
-        file.close();
-        SD.end();
-
-        xSemaphoreGive(spiMutex);
-        result = "Saved timers to ";
-        result.concat(DEFAULT_TIMERFILE);
-        log_i("%s", result.c_str());
-        return true;
+        result = "Mutex timeout";
+        log_w("%s", result.c_str());
+        return false;
     }
-    else
+
+    if (!SD.begin(SDCARD_SS))
     {
-        result = "SPI mutex timeout.";
+        result = "Failed to initialize SD card";
         log_e("%s", result.c_str());
         return false;
     }
+
+    File file = SD.open(DEFAULT_TIMERFILE, FILE_WRITE);
+    if (!file)
+    {
+        SD.end();
+        result = "Failed to open ";
+        result.concat(DEFAULT_TIMERFILE);
+        result.concat(" for writing");
+        log_e("%s", result.c_str());
+        return false;
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(channelMutex);
+        for (int i = 0; i < NUMBER_OF_CHANNELS; ++i)
+        {
+            file.printf("[%d]\n", i); // Write channel header
+            for (const auto &timer : channel[i])
+                if (timer.time != 86400)
+                    file.printf("%d,%d\n", timer.time, timer.percentage);
+        }
+    }
+
+    file.close();
+    SD.end();
+
+    result = "Saved timers to ";
+    result.concat(DEFAULT_TIMERFILE);
+    log_i("%s", result.c_str());
+    return true;
 }
 
 void loadDefaultTimers()
@@ -323,32 +267,33 @@ void loadDefaultTimers()
         return;
     }
 
-    if (xSemaphoreTake(spiMutex, pdMS_TO_TICKS(1000)))
+    ScopedMutex mutexGuard(spiMutex);
+
+    if (!mutexGuard.acquired())
     {
-        if (!SD.begin(SDCARD_SS))
-        {
-            xSemaphoreGive(spiMutex);
-            log_e("SD initialization failed!");
-            return;
-        }
+        log_w("Mutex timeout");
+        return;
+    }
 
-        if (SD.exists(DEFAULT_TIMERFILE))
-        {
-            File file = SD.open(DEFAULT_TIMERFILE);
-            if (file)
-            {
-                parseTimerFile(file);
-                file.close();
-            }
-        }
-        else
-            log_w("Timer file %s not found!", DEFAULT_TIMERFILE);
+    if (!SD.begin(SDCARD_SS))
+    {
+        log_e("SD initialization failed!");
+        return;
+    }
 
-        SD.end(); // Clean shutdown
-        xSemaphoreGive(spiMutex);
+    if (SD.exists(DEFAULT_TIMERFILE))
+    {
+        File file = SD.open(DEFAULT_TIMERFILE);
+        if (file)
+        {
+            parseTimerFile(file);
+            file.close();
+        }
     }
     else
-        log_e("SD read timeout!");
+        log_w("Timer file %s not found!", DEFAULT_TIMERFILE);
+
+    SD.end();
 }
 
 void setup(void)
