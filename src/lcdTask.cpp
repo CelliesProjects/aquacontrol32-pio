@@ -223,8 +223,8 @@ void lcdTask(void *parameter)
     }
 
     {
-        ScopedMutex lock(spiMutex);
-        if (!lock.acquired())
+        ScopedMutex scopedMutex(spiMutex);
+        if (!scopedMutex.acquired())
         {
             log_e("Failed to acquire SPI mutex for display initialization");
             vTaskDelete(NULL);
@@ -238,8 +238,8 @@ void lcdTask(void *parameter)
         lcdMessage_t dummy;
         if (xQueuePeek(lcdQueue, &dummy, portMAX_DELAY))
         {
-            ScopedMutex lock(spiMutex);
-            if (!lock.acquired())
+            ScopedMutex scopedMutex(spiMutex);
+            if (!scopedMutex.acquired())
             {
                 log_w("Failed to acquire SPI mutex for display handling - dropped a message");
                 continue;
