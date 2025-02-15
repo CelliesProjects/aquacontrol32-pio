@@ -145,7 +145,7 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
             response.setContent(upload_start, size);
             return response.send(); }
 
-    );    
+    );
 
     server.on(
         "/timers", HTTP_GET, [](PsychicRequest *request)
@@ -247,7 +247,7 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
         ->setAuthentication(WEBIF_USER, WEBIF_PASSWORD);
 
     server.on(
-              "/upload", HTTP_POST, [](PsychicRequest *request)
+              "/api/upload", HTTP_POST, [](PsychicRequest *request)
               {
                   constexpr char *PARAMETER_FILE_NAME = "filename";
                   if (!request->hasParam(PARAMETER_FILE_NAME) || request->getParam(PARAMETER_FILE_NAME)->value().equals(""))
@@ -256,17 +256,14 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
                   auto file = request->body();
                   size_t fileSize = file.length();
 
-                  if (fileSize > 5 * 1024 * 1024)
-                      return request->reply(400, TEXT_PLAIN, "File size exceeds 5MB limit");
-
                   String fileName = request->getParam(PARAMETER_FILE_NAME)->value();
-                  String filePath = "/sdcard/" + fileName;
+                  const String filePath = "/" + fileName;
 
-                  log_i("Uploading file: %s (%u bytes)", fileName.c_str(), fileSize);
+                  log_d("Receiving file: %s (%u bytes)", fileName.c_str(), fileSize);
 
                   if (xSemaphoreTake(spiMutex, pdMS_TO_TICKS(1000)))
                   {
-                      if (!SD.begin(SS))
+                      if (!SD.begin(SDCARD_SS))
                       {
                           log_e("Failed to mount SD");
                           xSemaphoreGive(spiMutex);
@@ -337,7 +334,7 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
 
     );
 
-#if defined(CORE_DEBUG_LEVEL) && (CORE_DEBUG_LEVEL >= 4)
+#if defined(CORE_DEBUG_LEVEL) && (CORE_DEBUG_LEVEL >= 3)
     server.on(
         "/api/taskstats", HTTP_GET, [](PsychicRequest *request)
         {
