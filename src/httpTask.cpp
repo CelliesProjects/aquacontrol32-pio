@@ -266,9 +266,9 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
 
                   log_d("Received file: %s (%u bytes)", fileName.c_str(), fileSize);
 
-                  ScopedMutex mutexGuard(spiMutex);
+                  ScopedMutex scopedMutex(spiMutex);
 
-                  if (!mutexGuard.acquired())
+                  if (!scopedMutex.acquired())
                   {
                       log_w("Mutex timeout");
                       return request->reply(500, TEXT_PLAIN, "Server busy, try again later");

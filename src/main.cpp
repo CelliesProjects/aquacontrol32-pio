@@ -212,9 +212,9 @@ bool saveDefaultTimers(String &result)
         return false;
     }
 
-    ScopedMutex mutexGuard(spiMutex);
+    ScopedMutex scopedMutex(spiMutex);
 
-    if (!mutexGuard.acquired())
+    if (!scopedMutex.acquired())
     {
         result = "Mutex timeout";
         log_w("%s", result.c_str());
@@ -267,9 +267,9 @@ void loadDefaultTimers()
         return;
     }
 
-    ScopedMutex mutexGuard(spiMutex);
+    ScopedMutex scopedMutex(spiMutex);
 
-    if (!mutexGuard.acquired())
+    if (!scopedMutex.acquired())
     {
         log_w("Mutex timeout");
         return;
