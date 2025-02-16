@@ -59,7 +59,7 @@
         const progressBar = document.getElementById("progress-bar");
         const progressContainer = document.getElementById("progress-container");
         const statusText = document.getElementById("status");
-        const MAX_SIZE = 16383; // 16kB
+        const MAX_SIZE = 16383;
 
         dropArea.addEventListener("click", () => fileInput.click());
         fileInput.addEventListener("change", (e) => handleFile(e.target.files[0]));
@@ -95,6 +95,10 @@
             const xhr = new XMLHttpRequest();
             xhr.open("POST", "/api/upload?filename=" + encodeURIComponent(file.name), true);
 
+            fileInput.disabled = true;
+            dropArea.style.pointerEvents = "none";
+            dropArea.style.opacity = "0.6";
+
             xhr.upload.onprogress = (e) => {
                 if (e.lengthComputable) {
                     const percentComplete = (e.loaded / e.total) * 100;
@@ -111,14 +115,27 @@
 
             xhr.onload = () => {
                 progressContainer.style.display = "none";
+                fileInput.value = "";
+
                 if (xhr.status === 200) {
                     setStatus("File uploaded successfully!", "green");
                 } else {
                     setStatus("Upload failed: " + xhr.responseText, "red");
                 }
+
+                fileInput.disabled = false;
+                dropArea.style.pointerEvents = "auto";
+                dropArea.style.opacity = "1";
             };
 
-            xhr.onerror = () => setStatus("Error uploading file.", "red");
+            xhr.onerror = () => {
+                setStatus("Error uploading file.", "red");
+
+                fileInput.disabled = false;
+                dropArea.style.pointerEvents = "auto";
+                dropArea.style.opacity = "1";
+            };
+
             xhr.send(formData);
         }
 
