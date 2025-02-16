@@ -11,7 +11,7 @@ private:
     bool locked;
 
 public:
-    ScopedMutex(SemaphoreHandle_t &m, TickType_t timeout = pdMS_TO_TICKS(1000)) : mutex(m), locked(xSemaphoreTake(mutex, timeout)) {}
+    explicit ScopedMutex(SemaphoreHandle_t &m, TickType_t timeout = pdMS_TO_TICKS(1000)) : mutex(m), locked(xSemaphoreTake(mutex, timeout)) {}
 
     ~ScopedMutex()
     {
