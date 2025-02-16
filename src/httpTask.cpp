@@ -340,7 +340,7 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
 
     );
 
-#if defined(CORE_DEBUG_LEVEL) && (CORE_DEBUG_LEVEL >= 3)
+#if defined(CORE_DEBUG_LEVEL) && (CORE_DEBUG_LEVEL >= 4)
     server.on(
         "/api/taskstats", HTTP_GET, [](PsychicRequest *request)
         {
@@ -407,20 +407,20 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
 
     );
 
-    if (false) // set to true to show every connection made
-    {
-        server.onOpen(
-            [](PsychicClient *client)
-            {
-                log_i("[http] connection #%u connected from %s", client->socket(), client->remoteIP().toString());
-            });
+#define SHOW_ALL_CONNECTIONS 0
+#if SHOW_ALL_CONNECTIONS
+    server.onOpen(
+        [](PsychicClient *client)
+        {
+            log_i("[http] connection #%u connected from %s", client->socket(), client->remoteIP().toString().c_str());
+        });
 
-        server.onClose(
-            [](PsychicClient *client)
-            {
-                log_i("[http] connection #%u closed", client->socket());
-            });
-    }
+    server.onClose(
+        [](PsychicClient *client)
+        {
+            log_i("[http] connection #%u closed", client->socket());
+        });
+#endif
 }
 
 void httpTask(void *parameter)
