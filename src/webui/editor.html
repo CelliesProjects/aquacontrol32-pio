@@ -113,7 +113,7 @@
             csvData += `${timer.time},${timer.intensity}\n`;
         });
 
-        fetch(`/upload?channel=${channel}`, {
+        fetch(`/timers?channel=${channel}`, {
             method: 'POST',
             body: csvData,
             headers: {

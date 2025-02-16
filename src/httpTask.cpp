@@ -1,4 +1,5 @@
 #include "httpTask.hpp"
+#include "ScopedMutex.h"
 
 static constexpr char *TEXT_HTML = "text/html";
 static constexpr char *TEXT_PLAIN = "text/plain";
@@ -129,6 +130,25 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
     );
 
     server.on(
+        "/fileupload", HTTP_GET, [](PsychicRequest *request)
+        {
+            if (samePageIsCached(request, contentCreationTime, etagValue))
+                return request->reply(304);
+
+            extern const uint8_t upload_start[] asm("_binary_src_webui_fileupload_html_gz_start");
+            extern const uint8_t upload_end[] asm("_binary_src_webui_fileupload_html_gz_end");   
+
+            PsychicResponse response = PsychicResponse(request);
+            addStaticContentHeaders(response, contentCreationTime, etagValue);
+            response.addHeader(CONTENT_ENCODING, GZIP);
+            response.setContentType(TEXT_HTML);
+            const size_t size = upload_end - upload_start;
+            response.setContent(upload_start, size);
+            return response.send(); }
+
+    );
+
+    server.on(
         "/timers", HTTP_GET, [](PsychicRequest *request)
         {
             auto validChannel = validateChannel(request);
@@ -158,7 +178,7 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
     );
 
     server.on(
-              "/upload", HTTP_POST, [](PsychicRequest *request)
+              "/timers", HTTP_POST, [](PsychicRequest *request)
               {
             auto validChannel = validateChannel(request);
             if (!validChannel) 
@@ -228,6 +248,64 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
         ->setAuthentication(WEBIF_USER, WEBIF_PASSWORD);
 
     server.on(
+              "/api/upload", HTTP_POST, [](PsychicRequest *request)
+              {
+                  constexpr char *PARAMETER_FILE_NAME = "filename";
+
+                  if (!request->hasParam(PARAMETER_FILE_NAME) || request->getParam(PARAMETER_FILE_NAME)->value().isEmpty())
+                      return request->reply(400, TEXT_PLAIN, "No filename provided");
+
+                  String fileName = request->getParam(PARAMETER_FILE_NAME)->value();
+                  const String filePath = "/" + fileName;
+
+                  String file = request->body();
+                  size_t fileSize = file.length();
+
+                  if (fileSize == 0)
+                      return request->reply(400, TEXT_PLAIN, "File is empty");
+
+                  log_d("Received file: %s (%u bytes)", fileName.c_str(), fileSize);
+
+                  ScopedMutex scopedMutex(spiMutex);
+
+                  if (!scopedMutex.acquired())
+                  {
+                      log_w("Mutex timeout");
+                      return request->reply(500, TEXT_PLAIN, "Server busy, try again later");
+                  }
+
+                  if (!SD.begin(SDCARD_SS))
+                  {
+                      log_e("Failed to initialize SD card");
+                      return request->reply(500, TEXT_PLAIN, "SD card initialization failed");
+                  }
+
+                  File destFile = SD.open(filePath, FILE_WRITE);
+                  if (!destFile)
+                  {
+                      log_e("Failed to open file for writing: %s", filePath.c_str());
+                      SD.end();
+                      return request->reply(500, TEXT_PLAIN, "Failed to open file for writing");
+                  }
+
+                  if (destFile.write(reinterpret_cast<const uint8_t *>(file.c_str()), fileSize) != fileSize)
+                  {
+                      log_e("Failed to write entire file: %s", filePath.c_str());
+                      destFile.close();
+                      SD.end();
+                      return request->reply(500, TEXT_PLAIN, "File write error");
+                  }
+
+                  destFile.close();
+                  SD.end();
+
+                  return request->reply(200, TEXT_PLAIN, "Upload successful");
+              }
+
+              )
+        ->setAuthentication(WEBIF_USER, WEBIF_PASSWORD);
+
+    server.on(
         "/uptime", HTTP_GET, [&timeinfo](PsychicRequest *request)
         {
             time_t now;
@@ -262,7 +340,7 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
 
     );
 
-#if defined(CORE_DEBUG_LEVEL) && (CORE_DEBUG_LEVEL >= 4)
+#if defined(CORE_DEBUG_LEVEL) && (CORE_DEBUG_LEVEL >= 3)
     server.on(
         "/api/taskstats", HTTP_GET, [](PsychicRequest *request)
         {
@@ -363,7 +441,7 @@ void httpTask(void *parameter)
     static PsychicHttpServer server;
     static PsychicWebSocketHandler websocketHandler;
 
-    server.config.max_uri_handlers = 10;
+    server.config.max_uri_handlers = 14;
     server.config.max_open_sockets = 8;
 
     server.listen(80);
