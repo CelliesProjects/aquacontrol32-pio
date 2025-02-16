@@ -200,7 +200,7 @@ void lcdTask(void *parameter)
             ScopedMutex scopedMutex(spiMutex);
             if (!scopedMutex.acquired())
             {
-                log_w("Failed to acquire SPI mutex for display handling - dropped a message");
+                log_w("Failed to acquire SPI mutex - message processing delayed");
                 continue;
             }
 

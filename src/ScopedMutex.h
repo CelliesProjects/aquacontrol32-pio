@@ -16,9 +16,7 @@ public:
     ~ScopedMutex()
     {
         if (locked)
-        {
             xSemaphoreGive(mutex);
-        }
     }
 
     bool acquired() const { return locked; }
