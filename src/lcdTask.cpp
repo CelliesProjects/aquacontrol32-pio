@@ -41,7 +41,11 @@ static void showSystemMessage(char *str)
         pch = strtok(NULL, "\n");
     }
 
-    sysMess.pushSprite(0, 96);
+    ScopedMutex scopedMutex(spiMutex);
+    if (scopedMutex.acquired())
+        sysMess.pushSprite(0, 96);
+    else
+        log_w("Failed to acquire SPI mutex for pushSprite()");
 }
 
 static void updateLights()
@@ -85,7 +89,12 @@ static void updateLights()
         lightBars.drawRect(THIS_OFFSET - (BAR_WIDTH / 2), BAR_HEIGHT, BAR_WIDTH, -BAR_HEIGHT, 1);
         lightBars.fillRect(THIS_OFFSET - (BAR_WIDTH / 2), BAR_HEIGHT, BAR_WIDTH, -filledHeight, 1);
     }
-    lightBars.pushSprite(0, yPos);
+
+    ScopedMutex scopedMutex(spiMutex);
+    if (scopedMutex.acquired())
+        lightBars.pushSprite(0, yPos);
+    else
+        log_w("Failed to acquire SPI mutex for pushSprite()");
 }
 
 static void showTemp(const float temperature)
@@ -116,7 +125,11 @@ static void showTemp(const float temperature)
     else
         temp.drawString("NO SENSOR", temp.width() >> 1, 3 + (font.yAdvance >> 1), &font);
 
-    temp.pushSprite(0, 25);
+    ScopedMutex scopedMutex(spiMutex);
+    if (scopedMutex.acquired())
+        temp.pushSprite(0, 25);
+    else
+        log_w("Failed to acquire SPI mutex for pushSprite()");
 }
 
 void showIP(const char *ip)
@@ -141,7 +154,12 @@ void showIP(const char *ip)
     ipAddress.setTextColor(0, 3);
     ipAddress.setTextDatum(CC_DATUM);
     ipAddress.drawString(buffer, ipAddress.width() >> 1, 2 + (font.yAdvance >> 1), &font);
-    ipAddress.pushSprite(0, 0);
+
+    ScopedMutex scopedMutex(spiMutex);
+    if (scopedMutex.acquired())
+        ipAddress.pushSprite(0, 0);
+    else
+        log_w("Failed to acquire SPI mutex for pushSprite()");
 }
 
 void handleNextMessage()
@@ -196,15 +214,6 @@ void lcdTask(void *parameter)
     {
         lcdMessage_t dummy;
         if (xQueuePeek(lcdQueue, &dummy, portMAX_DELAY))
-        {
-            ScopedMutex scopedMutex(spiMutex);
-            if (!scopedMutex.acquired())
-            {
-                log_w("Failed to acquire SPI mutex - message processing delayed");
-                continue;
-            }
-
             handleNextMessage();
-        }
     }
 }
