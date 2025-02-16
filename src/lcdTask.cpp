@@ -88,31 +88,6 @@ static void updateLights()
     lightBars.pushSprite(0, yPos);
 }
 
-static void updateClock(const struct tm &timeinfo)
-{
-    const GFXfont &font = lgfx::fonts::DejaVu18;
-    static LGFX_Sprite clock(&lcd);
-
-    if (clock.width() == 0 || clock.height() == 0)
-    {
-        clock.setColorDepth(lgfx::palette_2bit);
-        if (!clock.createSprite(lcd.width(), font.yAdvance))
-        {
-            log_e("could not create sprite");
-            return;
-        }
-        clock.setPaletteColor(1, TFT_WHITE);
-        clock.setPaletteColor(2, 0x00FF00U);
-        clock.setPaletteColor(3, 0xFF0000U);
-    }
-    char timestr[64];
-    strftime(timestr, sizeof(timestr), "%c", &timeinfo);
-    clock.clear(2);
-    clock.setTextColor(0, 2);
-    clock.drawCenterString(timestr, clock.width() >> 1, 0, &font);
-    clock.pushSprite(0, lcd.height() - font.yAdvance);
-}
-
 static void showTemp(const float temperature)
 {
     const GFXfont &font = DejaVu24Modded;
@@ -169,18 +144,6 @@ void showIP(const char *ip)
     ipAddress.pushSprite(0, 0);
 }
 
-void handleClock()
-{
-    static time_t lastSecond = 0;
-    if (time(NULL) != lastSecond)
-    {
-        struct tm timeinfo = {};
-        if (getLocalTime(&timeinfo, 0))
-            updateClock(timeinfo);
-        lastSecond = time(NULL);
-    }
-}
-
 void handleNextMessage()
 {
     lcdMessage_t msg;
@@ -223,15 +186,11 @@ void lcdTask(void *parameter)
     }
 
     {
-        ScopedMutex scopedMutex(spiMutex);
-        if (!scopedMutex.acquired())
-        {
-            log_e("Failed to acquire SPI mutex for display initialization");
-            vTaskDelete(NULL);
-        }
-
+        ScopedMutex scopedMutex(spiMutex, portMAX_DELAY);
         lcd.init();
     }
+
+    log_i("lcd init done");
 
     while (1)
     {
@@ -246,7 +205,6 @@ void lcdTask(void *parameter)
             }
 
             handleNextMessage();
-            // handleClock();
         }
     }
 }
