@@ -14,6 +14,7 @@
 #include "lightTimer.h"
 
 static const char *DEFAULT_TIMERFILE = "/default.aqu";
+static const char *MOON_SETTINGS_FILE = "/default.mnl";
 SemaphoreHandle_t spiMutex;
 
 extern QueueHandle_t lcdQueue;
@@ -26,6 +27,7 @@ extern void sensorTask(void *parameter);
 
 extern std::vector<lightTimer_t> channel[NUMBER_OF_CHANNELS];
 extern std::mutex channelMutex;
+extern float fullMoonLevel[NUMBER_OF_CHANNELS];
 
 static void startDimmerTask()
 {
@@ -294,6 +296,113 @@ void loadDefaultTimers()
         log_w("Timer file %s not found!", DEFAULT_TIMERFILE);
 
     SD.end();
+}
+
+bool saveMoonSettings(String &result)
+{
+    if (!spiMutex)
+    {
+        result = "SPI mutex not initialized";
+        log_e("%s", result.c_str());
+        return false;
+    }
+
+    ScopedMutex scopedMutex(spiMutex);
+
+    if (!scopedMutex.acquired())
+    {
+        result = "Mutex timeout";
+        log_w("%s", result.c_str());
+        return false;
+    }
+
+    if (!SD.begin(SDCARD_SS))
+    {
+        result = "Failed to initialize SD card";
+        log_e("%s", result.c_str());
+        return false;
+    }
+
+    File file = SD.open(MOON_SETTINGS_FILE, FILE_WRITE);
+    if (!file)
+    {
+        SD.end();
+        result = "Failed to open ";
+        result.concat(MOON_SETTINGS_FILE);
+        result.concat(" for writing");
+        log_e("%s", result.c_str());
+        return false;
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(channelMutex);
+        for (int i = 0; i < NUMBER_OF_CHANNELS; ++i)
+        {
+            file.printf("[%d]\n", i);                // Write channel header
+            file.printf("%.4f\n", fullMoonLevel[i]); // Save moonlight level with precision
+        }
+    }
+
+    file.close();
+    SD.end();
+
+    result = "Saved moon settings to ";
+    result.concat(MOON_SETTINGS_FILE);
+    log_i("%s", result.c_str());
+    return true;
+}
+
+bool loadMoonSettings()
+{
+    if (!spiMutex)
+    {
+        log_e("SPI mutex not initialized");
+        return false;
+    }
+
+    ScopedMutex scopedMutex(spiMutex);
+
+    if (!scopedMutex.acquired())
+    {
+        log_w("Mutex timeout");
+        return false;
+    }
+
+    if (!SD.begin(SDCARD_SS))
+    {
+        log_e("Failed to initialize SD card");
+        return false;
+    }
+
+    File file = SD.open(MOON_SETTINGS_FILE, FILE_READ);
+    if (!file)
+    {
+        SD.end();
+        log_e("Failed to open %s for reading", MOON_SETTINGS_FILE);
+        return false;
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(channelMutex);
+        for (int i = 0; i < NUMBER_OF_CHANNELS; ++i)
+        {
+            String line = file.readStringUntil('\n'); // Read channel header
+            if (line.length() == 0)
+                break;
+
+            line = file.readStringUntil('\n');
+            if (line.length() == 0)
+                break;
+
+                fullMoonLevel[i] = line.toFloat();
+        }
+    }
+
+    file.close();
+    SD.end();
+
+    log_i("Loaded moon settings from %s", MOON_SETTINGS_FILE);
+    return true;
 }
 
 void setup(void)
