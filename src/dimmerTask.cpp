@@ -51,7 +51,7 @@ void dimmerTask(void *parameter)
     moonData_t moon = moonPhase.getPhase();
 
     constexpr int TICK_RATE_HZ = 100;
-    constexpr TickType_t ticksToWait = pdTICKS_TO_MS(1000 / TICK_RATE_HZ);
+    constexpr TickType_t ticksToWait = pdMS_TO_TICKS(1000 / TICK_RATE_HZ);
     TickType_t xLastWakeTime = xTaskGetTickCount();
 
     while (1)
