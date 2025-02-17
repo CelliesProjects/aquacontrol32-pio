@@ -13,8 +13,9 @@
 #include "lcdMessage.h"
 #include "lightTimer.h"
 
-static const char *DEFAULT_TIMERFILE = "/default.aqu";
-static const char *MOON_SETTINGS_FILE = "/default.mnl";
+const char *DEFAULT_TIMERFILE = "/default.aqu";
+const char *MOON_SETTINGS_FILE = "/default.mnl";
+
 SemaphoreHandle_t spiMutex;
 
 extern QueueHandle_t lcdQueue;
@@ -24,6 +25,7 @@ extern void dimmerTask(void *parameter);
 extern void httpTask(void *parameter);
 extern void lcdTask(void *parameter);
 extern void sensorTask(void *parameter);
+extern bool loadMoonSettings(String &result);
 
 extern std::vector<lightTimer_t> channel[NUMBER_OF_CHANNELS];
 extern std::mutex channelMutex;
@@ -352,78 +354,6 @@ bool saveMoonSettings(String &result)
     return true;
 }
 
-bool loadMoonSettings()
-{
-    if (!spiMutex)
-    {
-        log_e("SPI mutex not initialized");
-        return false;
-    }
-
-    ScopedMutex scopedMutex(spiMutex);
-
-    if (!scopedMutex.acquired())
-    {
-        log_w("Mutex timeout");
-        return false;
-    }
-
-    if (!SD.begin(SDCARD_SS))
-    {
-        log_e("Failed to initialize SD card");
-        return false;
-    }
-
-    File file = SD.open(MOON_SETTINGS_FILE, FILE_READ);
-    if (!file)
-    {
-        SD.end();
-        log_e("Failed to open %s for reading", MOON_SETTINGS_FILE);
-        return false;
-    }
-
-    std::array<float, NUMBER_OF_CHANNELS> tempLevels;
-
-    for (int i = 0; i < NUMBER_OF_CHANNELS; ++i)
-    {
-        String header = file.readStringUntil('\n');
-        String value = file.readStringUntil('\n');
-
-        if (header.isEmpty() || value.isEmpty())
-        {
-            log_w("Unexpected EOF while reading channel %d", i);
-            return false;
-        }
-
-        int readIndex = -1;
-        if (sscanf(header.c_str(), "[%d]", &readIndex) != 1 || readIndex != i)
-        {
-            log_e("Invalid header format or index mismatch: expected [%d], got '%s'", i, header.c_str());
-            return false;
-        }
-
-        float level = value.toFloat();
-        if (!isfinite(level) || level < 0.0f || level > 100.0f)
-        {
-            log_e("Invalid float value for channel %d: '%s' (must be between 0 and 100)", i, value.c_str());
-            return false;
-        }
-
-        tempLevels[i] = level;
-    }
-
-    file.close();
-    SD.end();
-
-    {
-        std::lock_guard<std::mutex> lock(channelMutex);
-        std::copy(tempLevels.begin(), tempLevels.end(), fullMoonLevel);
-    }
-    
-    log_i("Loaded moon settings from %s", MOON_SETTINGS_FILE);
-    return true;
-}
-
 void setup(void)
 {
     Serial.begin(115200);
@@ -465,6 +395,12 @@ void setup(void)
     log_i("ch 2: %i timers", channel[2].size());
     log_i("ch 3: %i timers", channel[3].size());
     log_i("ch 4: %i timers", channel[4].size());
+
+    {
+        String result;
+        loadMoonSettings(result);
+        log_i("%s", result.c_str());
+    }
 
     WiFi.begin(SSID, PSK);
     WiFi.setSleep(false);

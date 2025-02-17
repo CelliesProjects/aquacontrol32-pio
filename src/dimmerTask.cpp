@@ -44,9 +44,6 @@ void dimmerTask(void *parameter)
                 delay(1000);
         }
 
-    extern bool loadMoonSettings();
-    loadMoonSettings();
-
     moonPhase moonPhase;
     moonData_t moon = moonPhase.getPhase();
 
