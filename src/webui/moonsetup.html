@@ -80,7 +80,6 @@
 
         function applySettings() {
             const values = Array.from(sliders).map(slider => slider.value).join(',');
-            console.log(values);
             fetch('/api/moonlevels', {
                 method: 'POST',
                 headers: { 'Content-Type': 'text/plain' },
