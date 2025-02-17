@@ -24,8 +24,7 @@ void dimmerTask(void *parameter)
 {
     static constexpr uint8_t ledPin[NUMBER_OF_CHANNELS] =
         {LEDPIN_0, LEDPIN_1, LEDPIN_2, LEDPIN_3, LEDPIN_4};
-    static constexpr float fullMoonLevel[NUMBER_OF_CHANNELS] =
-        {0, 0, 0, 0, 0.06};
+
     static constexpr int PWM_BITDEPTH = min(SOC_LEDC_TIMER_BIT_WIDTH, 16);
     static constexpr int LEDC_MAX_VALUE = (1 << PWM_BITDEPTH) - 1;
     static constexpr int freq = 1220;

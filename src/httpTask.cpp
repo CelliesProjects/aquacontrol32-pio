@@ -178,6 +178,80 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
     );
 
     server.on(
+        "/moonsetup", HTTP_GET, [](PsychicRequest *request)
+        {
+            if (samePageIsCached(request, contentCreationTime, etagValue))
+                return request->reply(304);
+
+            extern const uint8_t moon_start[] asm("_binary_src_webui_moonsetup_html_gz_start");
+            extern const uint8_t moon_end[] asm("_binary_src_webui_moonsetup_html_gz_end");
+
+            PsychicResponse response = PsychicResponse(request);
+            addStaticContentHeaders(response, contentCreationTime, etagValue);
+            response.addHeader(CONTENT_ENCODING, GZIP);
+            response.setContentType(TEXT_HTML);
+            const size_t size = moon_end - moon_start;
+            response.setContent(moon_start, size);
+            return response.send(); }
+
+    );
+
+    server.on(
+        "/moonlevels", HTTP_GET, [](PsychicRequest *request)
+        {
+            String responseStr;
+            responseStr.reserve(NUMBER_OF_CHANNELS * 8);
+
+            {
+                std::lock_guard<std::mutex> lock(channelMutex);
+                for (int i = 0; i < NUMBER_OF_CHANNELS; i++)
+                {
+                    responseStr += String(fullMoonLevel[i]);
+                    if (i < NUMBER_OF_CHANNELS - 1)
+                        responseStr += ",";
+                }
+            }
+
+            return request->reply(200, TEXT_PLAIN, responseStr.c_str()); }
+
+    );
+
+    server.on(
+        "/moonlevels", HTTP_POST, [](PsychicRequest *request)
+        {
+            String body = request->body();
+            float newLevels[NUMBER_OF_CHANNELS];
+
+            int start = 0, count = 0;
+            while (count < NUMBER_OF_CHANNELS)
+            {
+                int comma = body.indexOf(',', start);
+                String valueStr = (comma == -1) ? body.substring(start) : body.substring(start, comma);
+                start = comma + 1;
+
+                float value = valueStr.toFloat();
+                if (value < 0.0f || value > 1.0f)
+                    return request->reply(400, TEXT_PLAIN, "Invalid values");
+
+                newLevels[count++] = value;
+                if (comma == -1)
+                    break;
+            }
+
+            if (count != NUMBER_OF_CHANNELS)
+                return request->reply(400, TEXT_PLAIN, "Incorrect number of values");          
+
+            {
+                std::lock_guard<std::mutex> lock(channelMutex);
+                for (int i = 0; i < NUMBER_OF_CHANNELS; i++)
+                    fullMoonLevel[i] = newLevels[i];
+            }
+
+            return request->reply(200, TEXT_PLAIN, "OK"); }
+
+    );
+
+    server.on(
               "/timers", HTTP_POST, [](PsychicRequest *request)
               {
             auto validChannel = validateChannel(request);
@@ -299,8 +373,7 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
                   destFile.close();
                   SD.end();
 
-                  return request->reply(200, TEXT_PLAIN, "Upload successful");
-              }
+                  return request->reply(200, TEXT_PLAIN, "Upload successful"); }
 
               )
         ->setAuthentication(WEBIF_USER, WEBIF_PASSWORD);
@@ -340,7 +413,7 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
 
     );
 
-#if defined(CORE_DEBUG_LEVEL) && (CORE_DEBUG_LEVEL >= 4)
+#if defined(CORE_DEBUG_LEVEL) && (CORE_DEBUG_LEVEL >= 3)
     server.on(
         "/api/taskstats", HTTP_GET, [](PsychicRequest *request)
         {

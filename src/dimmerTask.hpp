@@ -20,5 +20,6 @@ std::vector<lightTimer_t> channel[NUMBER_OF_CHANNELS];
 std::mutex channelMutex;
 
 float currentPercentage[NUMBER_OF_CHANNELS];
+float fullMoonLevel[NUMBER_OF_CHANNELS] = {0, 0, 0, 0, 0};
 
 #endif
