@@ -197,7 +197,7 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
     );
 
     server.on(
-        "/moonlevels", HTTP_GET, [](PsychicRequest *request)
+        "/api/moonlevels", HTTP_GET, [](PsychicRequest *request)
         {
             String responseStr;
             responseStr.reserve(NUMBER_OF_CHANNELS * 8);
@@ -217,7 +217,7 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
     );
 
     server.on(
-        "/moonlevels", HTTP_POST, [](PsychicRequest *request)
+        "/api/moonlevels", HTTP_POST, [](PsychicRequest *request)
         {
             String body = request->body();
             float newLevels[NUMBER_OF_CHANNELS];
@@ -239,7 +239,7 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
             }
 
             if (count != NUMBER_OF_CHANNELS)
-                return request->reply(400, TEXT_PLAIN, "Incorrect number of values");          
+                return request->reply(400, TEXT_PLAIN, "Incorrect number of values");
 
             {
                 std::lock_guard<std::mutex> lock(channelMutex);
@@ -247,9 +247,16 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
                     fullMoonLevel[i] = newLevels[i];
             }
 
-            return request->reply(200, TEXT_PLAIN, "OK"); }
+            extern bool saveMoonSettings(String &result);
+            String result;
+            result.reserve(64);
+            if (!saveMoonSettings(result))
+                return request->reply(500, TEXT_PLAIN, result.c_str());
 
-    );
+            return request->reply(200, TEXT_PLAIN, result.c_str());
+        }
+
+    )->setAuthentication(WEBIF_USER, WEBIF_PASSWORD);
 
     server.on(
               "/timers", HTTP_POST, [](PsychicRequest *request)
