@@ -382,25 +382,44 @@ bool loadMoonSettings()
         return false;
     }
 
+    std::array<float, NUMBER_OF_CHANNELS> tempLevels;
+
+    for (int i = 0; i < NUMBER_OF_CHANNELS; ++i)
     {
-        std::lock_guard<std::mutex> lock(channelMutex);
-        for (int i = 0; i < NUMBER_OF_CHANNELS; ++i)
+        String header = file.readStringUntil('\n');
+        String value = file.readStringUntil('\n');
+
+        if (header.isEmpty() || value.isEmpty())
         {
-            String line = file.readStringUntil('\n'); // Read channel header
-            if (line.length() == 0)
-                break;
-
-            line = file.readStringUntil('\n');
-            if (line.length() == 0)
-                break;
-
-                fullMoonLevel[i] = line.toFloat();
+            log_w("Unexpected EOF while reading channel %d", i);
+            return false;
         }
+
+        int readIndex = -1;
+        if (sscanf(header.c_str(), "[%d]", &readIndex) != 1 || readIndex != i)
+        {
+            log_e("Invalid header format or index mismatch: expected [%d], got '%s'", i, header.c_str());
+            return false;
+        }
+
+        float level = value.toFloat();
+        if (!isfinite(level) || level < 0.0f || level > 100.0f)
+        {
+            log_e("Invalid float value for channel %d: '%s' (must be between 0 and 100)", i, value.c_str());
+            return false;
+        }
+
+        tempLevels[i] = level;
     }
 
     file.close();
     SD.end();
 
+    {
+        std::lock_guard<std::mutex> lock(channelMutex);
+        std::copy(tempLevels.begin(), tempLevels.end(), fullMoonLevel);
+    }
+    
     log_i("Loaded moon settings from %s", MOON_SETTINGS_FILE);
     return true;
 }
