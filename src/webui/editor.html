@@ -113,7 +113,7 @@
             csvData += `${timer.time},${timer.intensity}\n`;
         });
 
-        fetch(`/timers?channel=${channel}`, {
+        fetch(`/api/timers?channel=${channel}`, {
             method: 'POST',
             body: csvData,
             headers: {
@@ -557,7 +557,7 @@
             window.addEventListener('resize', redrawCanvas);
 
             const downloadTimers = (channel) => {
-                fetch(`/timers?channel=${channel}`)
+                fetch(`/api/timers?channel=${channel}`)
                     .then(response => {
                         if (!response.ok) {
                             throw new Error(`Failed to fetch timers: ${response.statusText}`);

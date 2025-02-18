@@ -315,7 +315,26 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
     );
 
     server.on(
-        "/timers", HTTP_GET, [](PsychicRequest *request)
+        "/moonsetup", HTTP_GET, [](PsychicRequest *request)
+        {
+            if (samePageIsCached(request, contentCreationTime, etagValue))
+                return request->reply(304);
+
+            extern const uint8_t moon_start[] asm("_binary_src_webui_moonsetup_html_gz_start");
+            extern const uint8_t moon_end[] asm("_binary_src_webui_moonsetup_html_gz_end");
+
+            PsychicResponse response = PsychicResponse(request);
+            addStaticContentHeaders(response, contentCreationTime, etagValue);
+            response.addHeader(CONTENT_ENCODING, GZIP);
+            response.setContentType(TEXT_HTML);
+            const size_t size = moon_end - moon_start;
+            response.setContent(moon_start, size);
+            return response.send(); }
+
+    );
+
+    server.on(
+        "/api/timers", HTTP_GET, [](PsychicRequest *request)
         {
             auto validChannel = validateChannel(request);
             if (!validChannel) 
@@ -344,23 +363,77 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
     );
 
     server.on(
-        "/moonsetup", HTTP_GET, [](PsychicRequest *request)
+        "/api/timers", HTTP_POST, [](PsychicRequest *request)
         {
-            if (samePageIsCached(request, contentCreationTime, etagValue))
-                return request->reply(304);
+            auto validChannel = validateChannel(request);
+            if (!validChannel)
+                return ESP_OK;
 
-            extern const uint8_t moon_start[] asm("_binary_src_webui_moonsetup_html_gz_start");
-            extern const uint8_t moon_end[] asm("_binary_src_webui_moonsetup_html_gz_end");
+            const uint8_t channelIndex = *validChannel;
 
-            PsychicResponse response = PsychicResponse(request);
-            addStaticContentHeaders(response, contentCreationTime, etagValue);
-            response.addHeader(CONTENT_ENCODING, GZIP);
-            response.setContentType(TEXT_HTML);
-            const size_t size = moon_end - moon_start;
-            response.setContent(moon_start, size);
-            return response.send(); }
+            String csvData = request->body();
 
-    );
+            std::vector<lightTimer_t> newTimers;
+            int startIdx = 0;
+            int endIdx = csvData.indexOf('\n');
+
+            log_d("Parsing timers for channel %i", channelIndex);
+
+            while (endIdx != -1)
+            {
+                String line = csvData.substring(startIdx, endIdx);
+
+                if (line.length() == 0)
+                    continue;
+
+                int commaIdx = line.indexOf(',');
+
+                if (commaIdx != -1)
+                {
+                    int time = strtol(line.substring(0, commaIdx).c_str(), NULL, 10);
+                    int percentage = strtol(line.substring(commaIdx + 1).c_str(), NULL, 10);
+
+                    if (time > 86400 || percentage > 100)
+                    {
+                        log_e("Timer data value overflow");
+                        return request->reply(400, TEXT_PLAIN, "Overflow in timer data");
+                    }
+
+                    newTimers.push_back({time, percentage});
+
+                    log_v("Staging% 6i,% 4i for channel %i", time, percentage, channelIndex);
+                }
+
+                startIdx = endIdx + 1;
+                endIdx = csvData.indexOf('\n', startIdx);
+            }
+
+            if (newTimers.size() < 2 ||
+                newTimers.front().time != 0 || newTimers.back().time != 86400 ||
+                newTimers.front().percentage != newTimers.back().percentage)
+            {
+                log_e("Staged timerdata failed sanity check");
+                return request->reply(400, TEXT_PLAIN, "Data sanity check failed");
+            }
+
+            {
+                std::lock_guard<std::mutex> lock(channelMutex);
+                channel[channelIndex].clear();
+                for (auto &timer : newTimers)
+                    channel[channelIndex].push_back(timer);
+            }
+
+            log_i("Cleared and added %i new timers to channel %i", channel[channelIndex].size(), channelIndex);
+
+            String result;
+            result.reserve(128);
+
+            const bool success = saveDefaultTimers(result);
+
+            return request->reply(success ? 200 : 500, TEXT_PLAIN, result.c_str()); }
+
+        )
+    ->setAuthentication(WEBIF_USER, WEBIF_PASSWORD);
 
     server.on(
         "/api/moonlevels", HTTP_GET, [](PsychicRequest *request)
@@ -424,79 +497,6 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
         ->setAuthentication(WEBIF_USER, WEBIF_PASSWORD);
 
     server.on(
-              "/timers", HTTP_POST, [](PsychicRequest *request)
-              {
-                  auto validChannel = validateChannel(request);
-                  if (!validChannel)
-                      return ESP_OK;
-
-                  const uint8_t channelIndex = *validChannel;
-
-                  String csvData = request->body();
-
-                  std::vector<lightTimer_t> newTimers;
-                  int startIdx = 0;
-                  int endIdx = csvData.indexOf('\n');
-
-                  log_d("Parsing timers for channel %i", channelIndex);
-
-                  while (endIdx != -1)
-                  {
-                      String line = csvData.substring(startIdx, endIdx);
-
-                      if (line.length() == 0)
-                          continue;
-
-                      int commaIdx = line.indexOf(',');
-
-                      if (commaIdx != -1)
-                      {
-                          int time = strtol(line.substring(0, commaIdx).c_str(), NULL, 10);
-                          int percentage = strtol(line.substring(commaIdx + 1).c_str(), NULL, 10);
-
-                          if (time > 86400 || percentage > 100)
-                          {
-                              log_e("Timer data value overflow");
-                              return request->reply(400, TEXT_PLAIN, "Overflow in timer data");
-                          }
-
-                          newTimers.push_back({time, percentage});
-
-                          log_v("Staging% 6i,% 4i for channel %i", time, percentage, channelIndex);
-                      }
-
-                      startIdx = endIdx + 1;
-                      endIdx = csvData.indexOf('\n', startIdx);
-                  }
-
-                  if (newTimers.size() < 2 ||
-                      newTimers.front().time != 0 || newTimers.back().time != 86400 ||
-                      newTimers.front().percentage != newTimers.back().percentage)
-                  {
-                      log_e("Staged timerdata failed sanity check");
-                      return request->reply(400, TEXT_PLAIN, "Data sanity check failed");
-                  }
-
-                  {
-                      std::lock_guard<std::mutex> lock(channelMutex);
-                      channel[channelIndex].clear();
-                      for (auto &timer : newTimers)
-                          channel[channelIndex].push_back(timer);
-                  }
-
-                  log_i("Cleared and added %i new timers to channel %i", channel[channelIndex].size(), channelIndex);
-
-                  String result;
-                  result.reserve(128);
-
-                  const bool success = saveDefaultTimers(result);
-
-                  return request->reply(success ? 200 : 500, TEXT_PLAIN, result.c_str()); }
-
-              )
-        ->setAuthentication(WEBIF_USER, WEBIF_PASSWORD);
-
-    server.on(
               "/api/upload", HTTP_POST, [](PsychicRequest *request)
               {
                   constexpr char *PARAMETER_FILE_NAME = "filename";
@@ -541,7 +541,7 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
         ->setAuthentication(WEBIF_USER, WEBIF_PASSWORD);
 
     server.on(
-        "/uptime", HTTP_GET, [&timeinfo](PsychicRequest *request)
+        "/api/uptime", HTTP_GET, [&timeinfo](PsychicRequest *request)
         {
             time_t now;
             time(&now);
