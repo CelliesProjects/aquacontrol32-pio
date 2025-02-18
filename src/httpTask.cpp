@@ -99,7 +99,7 @@ bool loadMoonSettings(String &result)
         float level = value.toFloat();
         if (!isfinite(level) || level < 0.0f || level > 100.0f)
         {
-            log_e("Invalid float value for channel %d: '%s' (must be between 0 and 100)", i, value.c_str());
+            result = "Invalid float value for channel " + String(i) + " '" + String(value) + "' (must be between 0 and 100)";
             return false;
         }
 
@@ -115,6 +115,7 @@ bool loadMoonSettings(String &result)
     }
 
     log_i("Loaded moon settings from %s", MOON_SETTINGS_FILE);
+    result = "Moon settings processed";
     return true;
 }
 
