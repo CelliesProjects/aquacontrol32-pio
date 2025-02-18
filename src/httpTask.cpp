@@ -1,5 +1,4 @@
 #include "httpTask.hpp"
-#include "ScopedMutex.h"
 
 static constexpr char *TEXT_HTML = "text/html";
 static constexpr char *TEXT_PLAIN = "text/plain";
@@ -173,6 +172,8 @@ bool saveMoonSettings(String &result)
 
 static void setupWebsocketHandler(PsychicWebSocketHandler &websocketHandler)
 {
+#define SHOW_WS_CONNECTIONS 0
+#if SHOW_WS_CONNECTIONS
     websocketHandler.onOpen(
         [](PsychicWebSocketClient *client)
         {
@@ -184,6 +185,7 @@ static void setupWebsocketHandler(PsychicWebSocketHandler &websocketHandler)
         {
             log_i("[socket] connection #%u closed", client->socket());
         });
+#endif
 
     websocketHandler.onFrame(
         [](PsychicWebSocketRequest *request, httpd_ws_frame *frame)
@@ -642,8 +644,8 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
 
     );
 
-#define SHOW_ALL_CONNECTIONS 0
-#if SHOW_ALL_CONNECTIONS
+#define SHOW_HTTP_CONNECTIONS 0
+#if SHOW_HTTP_CONNECTIONS
     server.onOpen(
         [](PsychicClient *client)
         {
@@ -676,7 +678,7 @@ void httpTask(void *parameter)
     static PsychicHttpServer server;
     static PsychicWebSocketHandler websocketHandler;
 
-    server.config.max_uri_handlers = 14;
+    server.config.max_uri_handlers = 15;
     server.config.max_open_sockets = 8;
 
     server.listen(80);
