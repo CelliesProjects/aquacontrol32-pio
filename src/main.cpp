@@ -84,8 +84,7 @@ static void ntpCb(void *cb_arg)
     startDimmerTask();
 }
 
-static void parseTimerFile(File &file)
-{
+static bool parseTimerFile(File &file, String &result) {
     log_i("parsing '%s'", file.path());
 
     constexpr int MAX_TIME = 86400;
@@ -105,26 +104,22 @@ static void parseTimerFile(File &file)
         int currentLine = 1;
         bool error = false;
 
-        while (file.available() && !error)
-        {
-            if (line.isEmpty()) // Skip empty lines
-            {
+        while (file.available() && !error) {
+            if (line.isEmpty()) {
                 line = file.readStringUntil('\n');
                 currentLine++;
                 continue;
             }
 
-            if (line.length() < 3 || line[0] != '[' || !isdigit(line[1]) || line[2] != ']')
-            {
-                log_e("invalid section header at line %i", currentLine);
-                break;
+            if (line.length() < 3 || line[0] != '[' || !isdigit(line[1]) || line[2] != ']') {
+                result = "invalid section header at line " + String(currentLine);
+                return false; // Return false on error
             }
 
             const int currentChannel = atoi(&line[1]);
-            if (currentChannel > MAX_CHANNEL || currentChannel < MIN_CHANNEL)
-            {
-                log_e("invalid channel number at line %i", currentLine);
-                break;
+            if (currentChannel > MAX_CHANNEL || currentChannel < MIN_CHANNEL) {
+                result = "invalid channel number at line " + String(currentLine);
+                return false; // Return false on error
             }
 
             log_v("current channel: %i", currentChannel);
@@ -132,58 +127,46 @@ static void parseTimerFile(File &file)
             line = file.readStringUntil('\n');
             currentLine++;
 
-            while ((line.length() && isdigit(line[0])) || line.isEmpty())
-            {
-                if (line.isEmpty()) // Skip empty lines
-                {
+            while ((line.length() && isdigit(line[0])) || line.isEmpty()) {
+                if (line.isEmpty()) {
                     line = file.readStringUntil('\n');
                     currentLine++;
                     if (line.isEmpty() && !file.available())
                         break;
-
                     continue;
                 }
 
-                if (line.length() < 3)
-                {
-                    log_e("invalid line %i", currentLine);
-                    error = true;
-                    break;
+                if (line.length() < 3) {
+                    result = "invalid line " + String(currentLine);
+                    return false;
                 }
 
-                if (line.indexOf(",") < 1)
-                {
-                    log_e("invalid syntax in line %i parsing channel %i", currentLine, currentChannel);
-                    error = true;
-                    break;
+                if (line.indexOf(",") < 1) {
+                    result = "invalid syntax in line " + String(currentLine) + " parsing channel " + String(currentChannel);
+                    return false;
                 }
 
                 const int time = line.toInt();
-                if (time > MAX_SECONDS_IN_A_DAY || time < 0)
-                {
-                    log_e("invalid time value in line %i parsing channel %i", currentLine, currentChannel);
-                    error = true;
-                    break;
+                if (time > MAX_SECONDS_IN_A_DAY || time < 0) {
+                    result = "invalid time value in line " + String(currentLine) + " parsing channel " + String(currentChannel);
+                    return false;
                 }
 
                 const int percentage = line.substring(line.indexOf(",") + 1).toInt();
-                if (percentage > MAX_PERCENTAGE || percentage < MIN_PERCENTAGE)
-                {
-                    log_e("invalid percentage value in line %i parsing channel %i", currentLine, currentChannel);
-                    error = true;
-                    break;
+                if (percentage > MAX_PERCENTAGE || percentage < MIN_PERCENTAGE) {
+                    result = "invalid percentage value in line " + String(currentLine) + " parsing channel " + String(currentChannel);
+                    return false;
                 }
 
                 auto insertPos =
                     std::lower_bound(channel[currentChannel].begin(), channel[currentChannel].end(),
-                                     lightTimer_t{time, percentage}, [](const lightTimer_t &a, const lightTimer_t &b)
-                                     { return a.time < b.time; });
+                                     lightTimer_t{time, percentage}, [](const lightTimer_t &a, const lightTimer_t &b) {
+                                         return a.time < b.time;
+                                     });
 
-                if (insertPos != channel[currentChannel].end() && insertPos->time == time)
-                {
-                    log_e("duplicate timer entry at line %i for channel %i at time %i", currentLine, currentChannel, time);
-                    error = true;
-                    break;
+                if (insertPos != channel[currentChannel].end() && insertPos->time == time) {
+                    result = "duplicate timer entry at line " + String(currentLine) + " for channel " + String(currentChannel) + " at time " + String(time);
+                    return false;
                 }
 
                 log_v("adding timer for channel %i time: %i, percent: %i", currentChannel, time, percentage);
@@ -199,12 +182,13 @@ static void parseTimerFile(File &file)
         for (int index = 0; index < NUMBER_OF_CHANNELS; index++)
             if (channel[index].size())
                 channel[index].push_back({MAX_TIME, channel[index][0].percentage});
-            else
-            {
+            else {
                 channel[index].push_back({0, 0});
                 channel[index].push_back({MAX_TIME, 0});
             }
     }
+    result = "Timers processed";
+    return true;
 }
 
 bool saveDefaultTimers(String &result)
@@ -285,21 +269,25 @@ bool loadDefaultTimers(String &result)
         return false;
     }
 
-    if (SD.exists(DEFAULT_TIMERFILE))
+    if (!SD.exists(DEFAULT_TIMERFILE))
     {
-        File file = SD.open(DEFAULT_TIMERFILE);
-        if (file)
-        {
-            parseTimerFile(file);
-            file.close();
-        }
+        result = "Timer file not found";
+        return false;
     }
-    else
-        log_w("Timer file %s not found!", DEFAULT_TIMERFILE);
 
+    File file = SD.open(DEFAULT_TIMERFILE);
+    if (!file)
+    {
+        result = "Could not open timer file";
+        return false;
+    }
+
+    const bool success = parseTimerFile(file, result);
+
+    file.close();
     SD.end();
 
-    return true;
+    return success;
 }
 
 bool saveMoonSettings(String &result)
@@ -342,8 +330,8 @@ bool saveMoonSettings(String &result)
         std::lock_guard<std::mutex> lock(channelMutex);
         for (int i = 0; i < NUMBER_OF_CHANNELS; ++i)
         {
-            file.printf("[%d]\n", i);                // Write channel header
-            file.printf("%.4f\n", fullMoonLevel[i]); // Save moonlight level with precision
+            file.printf("[%d]\n", i);
+            file.printf("%.6f\n", fullMoonLevel[i]);
         }
     }
 
