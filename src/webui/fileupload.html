@@ -89,11 +89,10 @@
         }
 
         function uploadFile(file) {
-            const formData = new FormData();
-            formData.append("file", file);
-
             const xhr = new XMLHttpRequest();
             xhr.open("POST", "/api/upload?filename=" + encodeURIComponent(file.name), true);
+
+            xhr.setRequestHeader("Content-Type", "text/plain"); // Or appropriate MIME type
 
             fileInput.disabled = true;
             dropArea.style.pointerEvents = "none";
@@ -136,7 +135,7 @@
                 dropArea.style.opacity = "1";
             };
 
-            xhr.send(formData);
+            xhr.send(file);
         }
 
         function setStatus(message, color) {
