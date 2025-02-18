@@ -352,7 +352,7 @@ void setup(void)
     pinMode(DAC1, OUTPUT); // prevents high pitched noise on the builtin speaker which is connected to the first DAC
 #endif
 
-    log_i("aquacontrol v2");
+    log_i("aquacontrol32-pio");
 
     spiMutex = xSemaphoreCreateMutex();
     if (!spiMutex)
