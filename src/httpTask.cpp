@@ -573,7 +573,7 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
 
     );
 
-#if defined(CORE_DEBUG_LEVEL) && (CORE_DEBUG_LEVEL >= 3)
+#if defined(CORE_DEBUG_LEVEL) && (CORE_DEBUG_LEVEL >= 4)
     server.on(
         "/api/taskstats", HTTP_GET, [](PsychicRequest *request)
         {
