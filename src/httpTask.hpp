@@ -28,5 +28,8 @@ extern void messageOnLcd(const char *str);
 
 QueueHandle_t websocketQueue = xQueueCreate(6, sizeof(websocketMessage));
 
+constexpr char *MOON_SETTINGS_FILE = "/default.mnl";
+const char *DEFAULT_TIMERFILE = "/default.aqu";
+
 #endif
 

@@ -59,8 +59,6 @@ bool loadMoonSettings(String &result)
         return false;
     }
 
-    extern const char *MOON_SETTINGS_FILE;
-
     File file = SD.open(MOON_SETTINGS_FILE, FILE_READ);
     if (!file)
     {
@@ -116,6 +114,60 @@ bool loadMoonSettings(String &result)
 
     log_i("Loaded moon settings from %s", MOON_SETTINGS_FILE);
     result = "Moon settings processed";
+    return true;
+}
+
+bool saveMoonSettings(String &result)
+{
+    if (!spiMutex)
+    {
+        result = "SPI mutex not initialized";
+        log_e("%s", result.c_str());
+        return false;
+    }
+
+    ScopedMutex scopedMutex(spiMutex);
+
+    if (!scopedMutex.acquired())
+    {
+        result = "Mutex timeout";
+        log_w("%s", result.c_str());
+        return false;
+    }
+
+    if (!SD.begin(SDCARD_SS))
+    {
+        result = "Failed to initialize SD card";
+        log_e("%s", result.c_str());
+        return false;
+    }
+
+    File file = SD.open(MOON_SETTINGS_FILE, FILE_WRITE);
+    if (!file)
+    {
+        SD.end();
+        result = "Failed to open ";
+        result.concat(MOON_SETTINGS_FILE);
+        result.concat(" for writing");
+        log_e("%s", result.c_str());
+        return false;
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(channelMutex);
+        for (int i = 0; i < NUMBER_OF_CHANNELS; ++i)
+        {
+            file.printf("[%d]\n", i);
+            file.printf("%.6f\n", fullMoonLevel[i]);
+        }
+    }
+
+    file.close();
+    SD.end();
+
+    result = "Saved moon settings to ";
+    result.concat(MOON_SETTINGS_FILE);
+    log_i("%s", result.c_str());
     return true;
 }
 
@@ -364,8 +416,6 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
                   String result;
                   result.reserve(128);
 
-                  extern bool saveMoonSettings(String & result);
-
                   const bool success = saveMoonSettings(result);
 
                   return request->reply(success ? 200 : 500, TEXT_PLAIN, result.c_str()); }
@@ -477,9 +527,6 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
 
                   if (!success)
                       return request->reply(500, TEXT_PLAIN, result.c_str());
-
-                  extern const char *DEFAULT_TIMERFILE;
-                  extern const char *MOON_SETTINGS_FILE;
 
                   if (!strcmp(DEFAULT_TIMERFILE, filePath.c_str()))
                       success = loadDefaultTimers(result);

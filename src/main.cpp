@@ -13,10 +13,9 @@
 #include "lcdMessage.h"
 #include "lightTimer.h"
 
-const char *DEFAULT_TIMERFILE = "/default.aqu";
-const char *MOON_SETTINGS_FILE = "/default.mnl";
-
 SemaphoreHandle_t spiMutex;
+
+extern const char *DEFAULT_TIMERFILE;
 
 extern QueueHandle_t lcdQueue;
 extern void messageOnLcd(const char *str);
@@ -300,60 +299,6 @@ bool loadDefaultTimers(String &result)
     SD.end();
 
     return success;
-}
-
-bool saveMoonSettings(String &result)
-{
-    if (!spiMutex)
-    {
-        result = "SPI mutex not initialized";
-        log_e("%s", result.c_str());
-        return false;
-    }
-
-    ScopedMutex scopedMutex(spiMutex);
-
-    if (!scopedMutex.acquired())
-    {
-        result = "Mutex timeout";
-        log_w("%s", result.c_str());
-        return false;
-    }
-
-    if (!SD.begin(SDCARD_SS))
-    {
-        result = "Failed to initialize SD card";
-        log_e("%s", result.c_str());
-        return false;
-    }
-
-    File file = SD.open(MOON_SETTINGS_FILE, FILE_WRITE);
-    if (!file)
-    {
-        SD.end();
-        result = "Failed to open ";
-        result.concat(MOON_SETTINGS_FILE);
-        result.concat(" for writing");
-        log_e("%s", result.c_str());
-        return false;
-    }
-
-    {
-        std::lock_guard<std::mutex> lock(channelMutex);
-        for (int i = 0; i < NUMBER_OF_CHANNELS; ++i)
-        {
-            file.printf("[%d]\n", i);
-            file.printf("%.6f\n", fullMoonLevel[i]);
-        }
-    }
-
-    file.close();
-    SD.end();
-
-    result = "Saved moon settings to ";
-    result.concat(MOON_SETTINGS_FILE);
-    log_i("%s", result.c_str());
-    return true;
 }
 
 void setup(void)
