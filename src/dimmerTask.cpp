@@ -47,6 +47,9 @@ void dimmerTask(void *parameter)
     moonPhase moonPhase;
     moonData_t moon = moonPhase.getPhase();
 
+    constexpr int MOON_UPDATE_INTERVAL_SEC = 15;
+    time_t nextMoonUpdate = time(NULL) + MOON_UPDATE_INTERVAL_SEC;
+
     constexpr int TICK_RATE_HZ = 100;
     constexpr TickType_t ticksToWait = pdMS_TO_TICKS(1000 / TICK_RATE_HZ);
     TickType_t xLastWakeTime = xTaskGetTickCount();
@@ -89,6 +92,12 @@ void dimmerTask(void *parameter)
                 if (!ledcWrite(ledPin[index], dutyCycle))
                     log_w("Error setting duty cycle %i on pin %i", dutyCycle, ledPin[index]);
             }
+        }
+
+        if (time(NULL) >= nextMoonUpdate)
+        {
+            moon = moonPhase.getPhase();
+            nextMoonUpdate += MOON_UPDATE_INTERVAL_SEC;
         }
 
         constexpr int REFRESHRATE_WEBSOCKET_HZ = 8;
