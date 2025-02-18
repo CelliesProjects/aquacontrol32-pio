@@ -263,26 +263,26 @@ bool saveDefaultTimers(String &result)
     return true;
 }
 
-void loadDefaultTimers()
+bool loadDefaultTimers(String &result)
 {
     if (!spiMutex)
     {
-        log_e("spi mutex not initialized!");
-        return;
+        result = "spi mutex not initialized!";
+        return false;
     }
 
     ScopedMutex scopedMutex(spiMutex);
 
     if (!scopedMutex.acquired())
     {
-        log_w("Mutex timeout");
-        return;
+        result = "Mutex timeout";
+        return false;
     }
 
     if (!SD.begin(SDCARD_SS))
     {
-        log_e("SD initialization failed!");
-        return;
+        result = "SD initialization failed!";
+        return false;
     }
 
     if (SD.exists(DEFAULT_TIMERFILE))
@@ -298,6 +298,8 @@ void loadDefaultTimers()
         log_w("Timer file %s not found!", DEFAULT_TIMERFILE);
 
     SD.end();
+
+    return true;
 }
 
 bool saveMoonSettings(String &result)
@@ -388,7 +390,11 @@ void setup(void)
     SPI.begin(SCK, MISO, MOSI);
     SPI.setHwCs(true);
 
-    loadDefaultTimers();
+    {
+        String result;
+        loadDefaultTimers(result);
+        log_i("%s", result.c_str());
+    }
 
     log_i("ch 0: %i timers", channel[0].size());
     log_i("ch 1: %i timers", channel[1].size());

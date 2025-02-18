@@ -360,13 +360,14 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
                           fullMoonLevel[i] = newLevels[i];
                   }
 
-                  extern bool saveMoonSettings(String & result);
                   String result;
                   result.reserve(128);
-                  if (!saveMoonSettings(result))
-                      return request->reply(500, TEXT_PLAIN, result.c_str());
 
-                  return request->reply(200, TEXT_PLAIN, result.c_str()); }
+                  extern bool saveMoonSettings(String & result);
+
+                  const bool success = saveMoonSettings(result);
+
+                  return request->reply(success ? 200 : 500, TEXT_PLAIN, result.c_str()); }
 
               )
         ->setAuthentication(WEBIF_USER, WEBIF_PASSWORD);
@@ -436,10 +437,10 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
 
                   String result;
                   result.reserve(128);
-                  if (!saveDefaultTimers(result))
-                      return request->reply(500, TEXT_PLAIN, result.c_str());
 
-                  return request->reply(200, TEXT_PLAIN, result.c_str()); }
+                  const bool success = saveDefaultTimers(result);
+
+                  return request->reply(success ? 200 : 500, TEXT_PLAIN, result.c_str()); }
 
               )
         ->setAuthentication(WEBIF_USER, WEBIF_PASSWORD);
@@ -479,14 +480,12 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
                   extern const char *DEFAULT_TIMERFILE;
                   extern const char *MOON_SETTINGS_FILE;
 
-                  if (fileName.equals(DEFAULT_TIMERFILE))
-                      loadDefaultTimers();
+                  if (!strcmp(DEFAULT_TIMERFILE, filePath.c_str()))
+                      success = loadDefaultTimers(result);
+                  else if (!strcmp(MOON_SETTINGS_FILE, filePath.c_str()))
+                      success = loadMoonSettings(result);
 
-                  if (fileName.equals(MOON_SETTINGS_FILE))
-                      loadMoonSettings(result);
-
-                  return request->reply(success ? 200 : 500, TEXT_PLAIN, result.c_str());
-              }
+                  return request->reply(success ? 200 : 500, TEXT_PLAIN, result.c_str()); }
 
               )
         ->setAuthentication(WEBIF_USER, WEBIF_PASSWORD);
