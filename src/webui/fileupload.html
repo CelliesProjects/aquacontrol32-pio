@@ -89,11 +89,10 @@
         }
 
         function uploadFile(file) {
-            const formData = new FormData();
-            formData.append("file", file);
-
             const xhr = new XMLHttpRequest();
             xhr.open("POST", "/api/upload?filename=" + encodeURIComponent(file.name), true);
+
+            xhr.setRequestHeader("Content-Type", "text/plain");
 
             fileInput.disabled = true;
             dropArea.style.pointerEvents = "none";
@@ -118,7 +117,7 @@
                 fileInput.value = "";
 
                 if (xhr.status === 200) {
-                    setStatus("File uploaded successfully!", "green");
+                    setStatus("Upload success: " + xhr.responseText, "green");
                 } else {
                     setStatus("Upload failed: " + xhr.responseText, "red");
                 }
@@ -136,7 +135,7 @@
                 dropArea.style.opacity = "1";
             };
 
-            xhr.send(formData);
+            xhr.send(file);
         }
 
         function setStatus(message, color) {

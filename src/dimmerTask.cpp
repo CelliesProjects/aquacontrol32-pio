@@ -24,8 +24,7 @@ void dimmerTask(void *parameter)
 {
     static constexpr uint8_t ledPin[NUMBER_OF_CHANNELS] =
         {LEDPIN_0, LEDPIN_1, LEDPIN_2, LEDPIN_3, LEDPIN_4};
-    static constexpr float fullMoonLevel[NUMBER_OF_CHANNELS] =
-        {0, 0, 0, 0, 0.06};
+
     static constexpr int PWM_BITDEPTH = min(SOC_LEDC_TIMER_BIT_WIDTH, 16);
     static constexpr int LEDC_MAX_VALUE = (1 << PWM_BITDEPTH) - 1;
     static constexpr int freq = 1220;
@@ -49,7 +48,7 @@ void dimmerTask(void *parameter)
     moonData_t moon = moonPhase.getPhase();
 
     constexpr int TICK_RATE_HZ = 100;
-    constexpr TickType_t ticksToWait = pdTICKS_TO_MS(1000 / TICK_RATE_HZ);
+    constexpr TickType_t ticksToWait = pdMS_TO_TICKS(1000 / TICK_RATE_HZ);
     TickType_t xLastWakeTime = xTaskGetTickCount();
 
     while (1)
@@ -120,16 +119,15 @@ void dimmerTask(void *parameter)
             lastLcdRefresh = millis();
         }
 
-        /*
-                static int lps = 0;
-                lps++;
-                static time_t currentSecond = time(NULL);
-                if (time(NULL) != currentSecond)
-                {
-                    log_i("loops per second: %i", lps);
-                    currentSecond++;
-                    lps = 0;
-                }
-        */
+        static int lps = 0;
+        lps++;
+        static time_t currentSecond = time(NULL);
+        if (time(NULL) != currentSecond)
+        {
+            if (lps != 100)
+                log_i("loops per second: %i", lps);
+            currentSecond++;
+            lps = 0;
+        }
     }
 }

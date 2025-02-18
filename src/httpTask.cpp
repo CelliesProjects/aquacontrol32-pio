@@ -37,6 +37,140 @@ static void generateETag(const char *date)
     snprintf(etagValue, sizeof(etagValue), "\"%" PRIX32 "\"", hash);
 }
 
+bool loadMoonSettings(String &result)
+{
+    if (!spiMutex)
+    {
+        result = "SPI mutex not initialized";
+        return false;
+    }
+
+    ScopedMutex scopedMutex(spiMutex);
+
+    if (!scopedMutex.acquired())
+    {
+        result = "Mutex timeout";
+        return false;
+    }
+
+    if (!SD.begin(SDCARD_SS))
+    {
+        result = "Failed to initialize SD card";
+        return false;
+    }
+
+    File file = SD.open(MOON_SETTINGS_FILE, FILE_READ);
+    if (!file)
+    {
+        SD.end();
+        result = "Failed to open ";
+        result.concat(MOON_SETTINGS_FILE);
+        result.concat(" for reading");
+        return false;
+    }
+
+    std::array<float, NUMBER_OF_CHANNELS> tempLevels;
+
+    for (int i = 0; i < NUMBER_OF_CHANNELS; ++i)
+    {
+        String header = file.readStringUntil('\n');
+        String value = file.readStringUntil('\n');
+
+        if (header.isEmpty() || value.isEmpty())
+        {
+            result = "Unexpected EOF while reading channel ";
+            result.concat(i);
+            return false;
+        }
+
+        int readIndex = -1;
+        if (sscanf(header.c_str(), "[%d]", &readIndex) != 1 || readIndex != i)
+        {
+            result = "Invalid header format or index mismatch: expected [";
+            result.concat(i);
+            result.concat("], got '");
+            result.concat(header);
+            result.concat("'");
+            return false;
+        }
+
+        float level = value.toFloat();
+        if (!isfinite(level) || level < 0.0f || level > 100.0f)
+        {
+            result = "Invalid float value for channel " + String(i) + " '" + String(value) + "' (must be between 0 and 100)";
+            return false;
+        }
+
+        tempLevels[i] = level;
+    }
+
+    file.close();
+    SD.end();
+
+    {
+        std::lock_guard<std::mutex> lock(channelMutex);
+        std::copy(tempLevels.begin(), tempLevels.end(), fullMoonLevel);
+    }
+
+    log_i("Loaded moon settings from %s", MOON_SETTINGS_FILE);
+    result = "Moon settings processed";
+    return true;
+}
+
+bool saveMoonSettings(String &result)
+{
+    if (!spiMutex)
+    {
+        result = "SPI mutex not initialized";
+        log_e("%s", result.c_str());
+        return false;
+    }
+
+    ScopedMutex scopedMutex(spiMutex);
+
+    if (!scopedMutex.acquired())
+    {
+        result = "Mutex timeout";
+        log_w("%s", result.c_str());
+        return false;
+    }
+
+    if (!SD.begin(SDCARD_SS))
+    {
+        result = "Failed to initialize SD card";
+        log_e("%s", result.c_str());
+        return false;
+    }
+
+    File file = SD.open(MOON_SETTINGS_FILE, FILE_WRITE);
+    if (!file)
+    {
+        SD.end();
+        result = "Failed to open ";
+        result.concat(MOON_SETTINGS_FILE);
+        result.concat(" for writing");
+        log_e("%s", result.c_str());
+        return false;
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(channelMutex);
+        for (int i = 0; i < NUMBER_OF_CHANNELS; ++i)
+        {
+            file.printf("[%d]\n", i);
+            file.printf("%.6f\n", fullMoonLevel[i]);
+        }
+    }
+
+    file.close();
+    SD.end();
+
+    result = "Saved moon settings to ";
+    result.concat(MOON_SETTINGS_FILE);
+    log_i("%s", result.c_str());
+    return true;
+}
+
 static void setupWebsocketHandler(PsychicWebSocketHandler &websocketHandler)
 {
     websocketHandler.onOpen(
@@ -87,6 +221,38 @@ static std::optional<uint8_t> validateChannel(PsychicRequest *request)
 time_t time_diff(struct tm *start, struct tm *end)
 {
     return mktime(end) - mktime(start);
+}
+
+static bool handleFileUpload(const String &file, const String &filePath, String &result)
+{
+    if (!SD.begin(SDCARD_SS))
+    {
+        result = "SD card initialization failed";
+        return false;
+    }
+
+    File destFile = SD.open(filePath, FILE_WRITE);
+    if (!destFile)
+    {
+        SD.end();
+        result = "Failed to open file for writing";
+        return false;
+    }
+
+    const size_t fileSize = file.length();
+
+    if (destFile.write(reinterpret_cast<const uint8_t *>(file.c_str()), fileSize) != fileSize)
+    {
+        destFile.close();
+        SD.end();
+        result = "File write error";
+        return false;
+    }
+
+    destFile.close();
+    SD.end();
+    result = "File saved successfully!";
+    return true;
 }
 
 static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
@@ -178,73 +344,156 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
     );
 
     server.on(
-              "/timers", HTTP_POST, [](PsychicRequest *request)
-              {
-            auto validChannel = validateChannel(request);
-            if (!validChannel) 
-                return ESP_OK;
+        "/moonsetup", HTTP_GET, [](PsychicRequest *request)
+        {
+            if (samePageIsCached(request, contentCreationTime, etagValue))
+                return request->reply(304);
 
-            const uint8_t channelIndex = *validChannel;
+            extern const uint8_t moon_start[] asm("_binary_src_webui_moonsetup_html_gz_start");
+            extern const uint8_t moon_end[] asm("_binary_src_webui_moonsetup_html_gz_end");
 
-            String csvData = request->body();
+            PsychicResponse response = PsychicResponse(request);
+            addStaticContentHeaders(response, contentCreationTime, etagValue);
+            response.addHeader(CONTENT_ENCODING, GZIP);
+            response.setContentType(TEXT_HTML);
+            const size_t size = moon_end - moon_start;
+            response.setContent(moon_start, size);
+            return response.send(); }
 
-            std::vector<lightTimer_t> newTimers;
-            int startIdx = 0;
-            int endIdx = csvData.indexOf('\n');
+    );
 
-            log_d("Parsing timers for channel %i", channelIndex);
-
-            while (endIdx != -1)
-            {
-                String line = csvData.substring(startIdx, endIdx);
-
-                if (line.length() == 0) continue;
-
-                int commaIdx = line.indexOf(',');
-
-                if (commaIdx != -1)
-                {
-                    int time = strtol(line.substring(0, commaIdx).c_str(), NULL, 10);
-                    int percentage = strtol(line.substring(commaIdx + 1).c_str(), NULL, 10);
-
-                    if (time > 86400 || percentage > 100)
-                    {
-                        log_e("Timer data value overflow");
-                        return request->reply(400, TEXT_PLAIN, "Overflow in timer data");
-                    }
-
-                    newTimers.push_back({time, percentage});
-
-                    log_v("Staging% 6i,% 4i for channel %i", time, percentage, channelIndex);
-                }
-
-                startIdx = endIdx + 1;
-                endIdx = csvData.indexOf('\n', startIdx);
-            }
-
-            if (newTimers.size() < 2 || 
-                newTimers.front().time != 0 || newTimers.back().time != 86400 ||
-                newTimers.front().percentage != newTimers.back().percentage)
-            {
-                log_e("Staged timerdata failed sanity check");
-                return request->reply(400, TEXT_PLAIN, "Data sanity check failed");
-            }
+    server.on(
+        "/api/moonlevels", HTTP_GET, [](PsychicRequest *request)
+        {
+            String responseStr;
+            responseStr.reserve(NUMBER_OF_CHANNELS * 8);
 
             {
                 std::lock_guard<std::mutex> lock(channelMutex);
-                channel[channelIndex].clear();
-                for (auto &timer : newTimers)
-                    channel[channelIndex].push_back(timer);
+                for (int i = 0; i < NUMBER_OF_CHANNELS; i++)
+                {
+                    responseStr += String(fullMoonLevel[i]);
+                    if (i < NUMBER_OF_CHANNELS - 1)
+                        responseStr += ",";
+                }
             }
 
-            log_i("Cleared and added %i new timers to channel %i",channel[channelIndex].size(), channelIndex);
+            return request->reply(200, TEXT_PLAIN, responseStr.c_str()); }
 
-            String result;
-            result.reserve(128);
-            if (!saveDefaultTimers(result))
-                return request->reply(500, TEXT_PLAIN, result.c_str()); 
+    );
 
-            return request->reply(200, TEXT_PLAIN, result.c_str()); })
+    server.on(
+              "/api/moonlevels", HTTP_POST, [](PsychicRequest *request)
+              {
+                  String body = request->body();
+                  float newLevels[NUMBER_OF_CHANNELS];
+
+                  int start = 0, count = 0;
+                  while (count < NUMBER_OF_CHANNELS)
+                  {
+                      int comma = body.indexOf(',', start);
+                      String valueStr = (comma == -1) ? body.substring(start) : body.substring(start, comma);
+                      start = comma + 1;
+
+                      float value = valueStr.toFloat();
+                      if (value < 0.0f || value > 1.0f)
+                          return request->reply(400, TEXT_PLAIN, "Invalid values");
+
+                      newLevels[count++] = value;
+                      if (comma == -1)
+                          break;
+                  }
+
+                  if (count != NUMBER_OF_CHANNELS)
+                      return request->reply(400, TEXT_PLAIN, "Incorrect number of values");
+
+                  {
+                      std::lock_guard<std::mutex> lock(channelMutex);
+                      for (int i = 0; i < NUMBER_OF_CHANNELS; i++)
+                          fullMoonLevel[i] = newLevels[i];
+                  }
+
+                  String result;
+                  result.reserve(128);
+
+                  const bool success = saveMoonSettings(result);
+
+                  return request->reply(success ? 200 : 500, TEXT_PLAIN, result.c_str()); }
+
+              )
+        ->setAuthentication(WEBIF_USER, WEBIF_PASSWORD);
+
+    server.on(
+              "/timers", HTTP_POST, [](PsychicRequest *request)
+              {
+                  auto validChannel = validateChannel(request);
+                  if (!validChannel)
+                      return ESP_OK;
+
+                  const uint8_t channelIndex = *validChannel;
+
+                  String csvData = request->body();
+
+                  std::vector<lightTimer_t> newTimers;
+                  int startIdx = 0;
+                  int endIdx = csvData.indexOf('\n');
+
+                  log_d("Parsing timers for channel %i", channelIndex);
+
+                  while (endIdx != -1)
+                  {
+                      String line = csvData.substring(startIdx, endIdx);
+
+                      if (line.length() == 0)
+                          continue;
+
+                      int commaIdx = line.indexOf(',');
+
+                      if (commaIdx != -1)
+                      {
+                          int time = strtol(line.substring(0, commaIdx).c_str(), NULL, 10);
+                          int percentage = strtol(line.substring(commaIdx + 1).c_str(), NULL, 10);
+
+                          if (time > 86400 || percentage > 100)
+                          {
+                              log_e("Timer data value overflow");
+                              return request->reply(400, TEXT_PLAIN, "Overflow in timer data");
+                          }
+
+                          newTimers.push_back({time, percentage});
+
+                          log_v("Staging% 6i,% 4i for channel %i", time, percentage, channelIndex);
+                      }
+
+                      startIdx = endIdx + 1;
+                      endIdx = csvData.indexOf('\n', startIdx);
+                  }
+
+                  if (newTimers.size() < 2 ||
+                      newTimers.front().time != 0 || newTimers.back().time != 86400 ||
+                      newTimers.front().percentage != newTimers.back().percentage)
+                  {
+                      log_e("Staged timerdata failed sanity check");
+                      return request->reply(400, TEXT_PLAIN, "Data sanity check failed");
+                  }
+
+                  {
+                      std::lock_guard<std::mutex> lock(channelMutex);
+                      channel[channelIndex].clear();
+                      for (auto &timer : newTimers)
+                          channel[channelIndex].push_back(timer);
+                  }
+
+                  log_i("Cleared and added %i new timers to channel %i", channel[channelIndex].size(), channelIndex);
+
+                  String result;
+                  result.reserve(128);
+
+                  const bool success = saveDefaultTimers(result);
+
+                  return request->reply(success ? 200 : 500, TEXT_PLAIN, result.c_str()); }
+
+              )
         ->setAuthentication(WEBIF_USER, WEBIF_PASSWORD);
 
     server.on(
@@ -259,48 +508,34 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
                   const String filePath = "/" + fileName;
 
                   String file = request->body();
-                  size_t fileSize = file.length();
 
-                  if (fileSize == 0)
+                  if (file.length() == 0)
                       return request->reply(400, TEXT_PLAIN, "File is empty");
 
-                  log_d("Received file: %s (%u bytes)", fileName.c_str(), fileSize);
-
-                  ScopedMutex scopedMutex(spiMutex);
-
-                  if (!scopedMutex.acquired())
+                  String result;
+                  result.reserve(128);
+                  
+                  bool success;
                   {
-                      log_w("Mutex timeout");
-                      return request->reply(500, TEXT_PLAIN, "Server busy, try again later");
+                      ScopedMutex scopedMutex(spiMutex);
+
+                      if (!scopedMutex.acquired())
+                      {
+                          log_w("Mutex timeout");
+                          return request->reply(500, TEXT_PLAIN, "Server busy, try again later");
+                      }
+                      success = handleFileUpload(file, filePath, result);
                   }
 
-                  if (!SD.begin(SDCARD_SS))
-                  {
-                      log_e("Failed to initialize SD card");
-                      return request->reply(500, TEXT_PLAIN, "SD card initialization failed");
-                  }
+                  if (!success)
+                      return request->reply(500, TEXT_PLAIN, result.c_str());
 
-                  File destFile = SD.open(filePath, FILE_WRITE);
-                  if (!destFile)
-                  {
-                      log_e("Failed to open file for writing: %s", filePath.c_str());
-                      SD.end();
-                      return request->reply(500, TEXT_PLAIN, "Failed to open file for writing");
-                  }
+                  if (!strcmp(DEFAULT_TIMERFILE, filePath.c_str()))
+                      success = loadDefaultTimers(result);
+                  else if (!strcmp(MOON_SETTINGS_FILE, filePath.c_str()))
+                      success = loadMoonSettings(result);
 
-                  if (destFile.write(reinterpret_cast<const uint8_t *>(file.c_str()), fileSize) != fileSize)
-                  {
-                      log_e("Failed to write entire file: %s", filePath.c_str());
-                      destFile.close();
-                      SD.end();
-                      return request->reply(500, TEXT_PLAIN, "File write error");
-                  }
-
-                  destFile.close();
-                  SD.end();
-
-                  return request->reply(200, TEXT_PLAIN, "Upload successful");
-              }
+                  return request->reply(success ? 200 : 500, TEXT_PLAIN, result.c_str()); }
 
               )
         ->setAuthentication(WEBIF_USER, WEBIF_PASSWORD);

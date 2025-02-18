@@ -13,8 +13,9 @@
 #include "lcdMessage.h"
 #include "lightTimer.h"
 
-static const char *DEFAULT_TIMERFILE = "/default.aqu";
 SemaphoreHandle_t spiMutex;
+
+extern const char *DEFAULT_TIMERFILE;
 
 extern QueueHandle_t lcdQueue;
 extern void messageOnLcd(const char *str);
@@ -23,9 +24,11 @@ extern void dimmerTask(void *parameter);
 extern void httpTask(void *parameter);
 extern void lcdTask(void *parameter);
 extern void sensorTask(void *parameter);
+extern bool loadMoonSettings(String &result);
 
 extern std::vector<lightTimer_t> channel[NUMBER_OF_CHANNELS];
 extern std::mutex channelMutex;
+extern float fullMoonLevel[NUMBER_OF_CHANNELS];
 
 static void startDimmerTask()
 {
@@ -80,7 +83,7 @@ static void ntpCb(void *cb_arg)
     startDimmerTask();
 }
 
-static void parseTimerFile(File &file)
+static bool parseTimerFile(File &file, String &result)
 {
     log_i("parsing '%s'", file.path());
 
@@ -103,7 +106,7 @@ static void parseTimerFile(File &file)
 
         while (file.available() && !error)
         {
-            if (line.isEmpty()) // Skip empty lines
+            if (line.isEmpty())
             {
                 line = file.readStringUntil('\n');
                 currentLine++;
@@ -112,15 +115,15 @@ static void parseTimerFile(File &file)
 
             if (line.length() < 3 || line[0] != '[' || !isdigit(line[1]) || line[2] != ']')
             {
-                log_e("invalid section header at line %i", currentLine);
-                break;
+                result = "invalid section header at line " + String(currentLine);
+                return false;
             }
 
             const int currentChannel = atoi(&line[1]);
             if (currentChannel > MAX_CHANNEL || currentChannel < MIN_CHANNEL)
             {
-                log_e("invalid channel number at line %i", currentLine);
-                break;
+                result = "invalid channel number at line " + String(currentLine);
+                return false;
             }
 
             log_v("current channel: %i", currentChannel);
@@ -130,44 +133,39 @@ static void parseTimerFile(File &file)
 
             while ((line.length() && isdigit(line[0])) || line.isEmpty())
             {
-                if (line.isEmpty()) // Skip empty lines
+                if (line.isEmpty())
                 {
                     line = file.readStringUntil('\n');
                     currentLine++;
                     if (line.isEmpty() && !file.available())
                         break;
-
                     continue;
                 }
 
                 if (line.length() < 3)
                 {
-                    log_e("invalid line %i", currentLine);
-                    error = true;
-                    break;
+                    result = "invalid line " + String(currentLine);
+                    return false;
                 }
 
                 if (line.indexOf(",") < 1)
                 {
-                    log_e("invalid syntax in line %i parsing channel %i", currentLine, currentChannel);
-                    error = true;
-                    break;
+                    result = "invalid syntax in line " + String(currentLine) + " parsing channel " + String(currentChannel);
+                    return false;
                 }
 
                 const int time = line.toInt();
                 if (time > MAX_SECONDS_IN_A_DAY || time < 0)
                 {
-                    log_e("invalid time value in line %i parsing channel %i", currentLine, currentChannel);
-                    error = true;
-                    break;
+                    result = "invalid time value in line " + String(currentLine) + " parsing channel " + String(currentChannel);
+                    return false;
                 }
 
                 const int percentage = line.substring(line.indexOf(",") + 1).toInt();
                 if (percentage > MAX_PERCENTAGE || percentage < MIN_PERCENTAGE)
                 {
-                    log_e("invalid percentage value in line %i parsing channel %i", currentLine, currentChannel);
-                    error = true;
-                    break;
+                    result = "invalid percentage value in line " + String(currentLine) + " parsing channel " + String(currentChannel);
+                    return false;
                 }
 
                 auto insertPos =
@@ -177,9 +175,8 @@ static void parseTimerFile(File &file)
 
                 if (insertPos != channel[currentChannel].end() && insertPos->time == time)
                 {
-                    log_e("duplicate timer entry at line %i for channel %i at time %i", currentLine, currentChannel, time);
-                    error = true;
-                    break;
+                    result = "duplicate timer entry at line " + String(currentLine) + " for channel " + String(currentChannel) + " at time " + String(time);
+                    return false;
                 }
 
                 log_v("adding timer for channel %i time: %i, percent: %i", currentChannel, time, percentage);
@@ -201,6 +198,8 @@ static void parseTimerFile(File &file)
                 channel[index].push_back({MAX_TIME, 0});
             }
     }
+    result = "Timers processed";
+    return true;
 }
 
 bool saveDefaultTimers(String &result)
@@ -259,41 +258,47 @@ bool saveDefaultTimers(String &result)
     return true;
 }
 
-void loadDefaultTimers()
+bool loadDefaultTimers(String &result)
 {
     if (!spiMutex)
     {
-        log_e("spi mutex not initialized!");
-        return;
+        result = "spi mutex not initialized!";
+        return false;
     }
 
     ScopedMutex scopedMutex(spiMutex);
 
     if (!scopedMutex.acquired())
     {
-        log_w("Mutex timeout");
-        return;
+        result = "Mutex timeout";
+        return false;
     }
 
     if (!SD.begin(SDCARD_SS))
     {
-        log_e("SD initialization failed!");
-        return;
+        result = "SD initialization failed!";
+        return false;
     }
 
-    if (SD.exists(DEFAULT_TIMERFILE))
+    if (!SD.exists(DEFAULT_TIMERFILE))
     {
-        File file = SD.open(DEFAULT_TIMERFILE);
-        if (file)
-        {
-            parseTimerFile(file);
-            file.close();
-        }
+        result = "Timer file not found";
+        return false;
     }
-    else
-        log_w("Timer file %s not found!", DEFAULT_TIMERFILE);
 
+    File file = SD.open(DEFAULT_TIMERFILE);
+    if (!file)
+    {
+        result = "Could not open timer file";
+        return false;
+    }
+
+    const bool success = parseTimerFile(file, result);
+
+    file.close();
     SD.end();
+
+    return success;
 }
 
 void setup(void)
@@ -304,7 +309,7 @@ void setup(void)
     pinMode(DAC1, OUTPUT); // prevents high pitched noise on the builtin speaker which is connected to the first DAC
 #endif
 
-    log_i("aquacontrol v2");
+    log_i("aquacontrol32-pio");
 
     spiMutex = xSemaphoreCreateMutex();
     if (!spiMutex)
@@ -330,13 +335,23 @@ void setup(void)
     SPI.begin(SCK, MISO, MOSI);
     SPI.setHwCs(true);
 
-    loadDefaultTimers();
+    {
+        String result;
+        loadDefaultTimers(result);
+        log_i("%s", result.c_str());
+    }
 
     log_i("ch 0: %i timers", channel[0].size());
     log_i("ch 1: %i timers", channel[1].size());
     log_i("ch 2: %i timers", channel[2].size());
     log_i("ch 3: %i timers", channel[3].size());
     log_i("ch 4: %i timers", channel[4].size());
+
+    {
+        String result;
+        loadMoonSettings(result);
+        log_i("%s", result.c_str());
+    }
 
     WiFi.begin(SSID, PSK);
     WiFi.setSleep(false);

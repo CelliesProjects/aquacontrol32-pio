@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moon Simulation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+
+        .slider-container {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            padding: 10px;
+        }
+
+        .slider-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 80px;
+        }
+
+        input[type="range"] {
+            writing-mode: bt-lr;
+            transform: rotate(270deg);
+            margin: 0;
+            height: 120px;
+        }
+
+        span {
+            margin-top: 5px;
+            font-size: 1rem;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Moon Simulation Channel Setup</h1>
+    <div class="slider-container">
+        <div class="slider-box" id="slider0"><input type="range" min="0" max="1" step="0.01" value="0"
+                id="s0"><span>0.00%</span></div>
+        <div class="slider-box" id="slider1"><input type="range" min="0" max="1" step="0.01" value="0"
+                id="s1"><span>0.00%</span></div>
+        <div class="slider-box" id="slider2"><input type="range" min="0" max="1" step="0.01" value="0"
+                id="s2"><span>0.00%</span></div>
+        <div class="slider-box" id="slider3"><input type="range" min="0" max="1" step="0.01" value="0"
+                id="s3"><span>0.00%</span></div>
+        <div class="slider-box" id="slider4"><input type="range" min="0" max="1" step="0.01" value="0"
+                id="s4"><span>0.00%</span></div>
+    </div>
+    <br>
+    <button onclick="applySettings()">Apply</button>
+    <script>
+        const sliders = document.querySelectorAll('input[type="range"]');
+        const spans = document.querySelectorAll('.slider-box span');
+
+        async function fetchValues() {
+            try {
+                const response = await fetch('/api/moonlevels');
+                const text = await response.text();
+                const values = text.split(',').map(Number);
+                sliders.forEach((slider, i) => {
+                    slider.value = values[i];
+                    spans[i].textContent = (values[i]) + '%';
+                });
+            } catch (error) {
+                console.error('Error fetching moon levels:', error);
+            }
+        }
+
+        function updateValue(event, index) {
+            spans[index].textContent = (event.target.value) + '%';
+        }
+
+        function applySettings() {
+            const values = Array.from(sliders).map(slider => slider.value).join(',');
+            fetch('/api/moonlevels', {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain' },
+                body: values
+            }).then(response => response.text().then(text => {
+                if (response.ok) {
+                    alert('Settings applied!\n\n' + text);
+                } else {
+                    alert('Error applying settings:\n\n' + text);
+                }
+            })).catch(error => {
+                alert('Request failed:\n\n' + error.message);
+            });
+        }
+
+        sliders.forEach((slider, i) => {
+            slider.addEventListener('input', event => updateValue(event, i));
+        });
+
+        fetchValues();
+    </script>
+</body>
+
+</html>
