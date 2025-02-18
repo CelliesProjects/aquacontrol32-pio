@@ -513,6 +513,8 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
                       return request->reply(400, TEXT_PLAIN, "File is empty");
 
                   String result;
+                  result.reserve(128);
+                  
                   bool success;
                   {
                       ScopedMutex scopedMutex(spiMutex);

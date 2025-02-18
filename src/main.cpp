@@ -116,14 +116,14 @@ static bool parseTimerFile(File &file, String &result)
             if (line.length() < 3 || line[0] != '[' || !isdigit(line[1]) || line[2] != ']')
             {
                 result = "invalid section header at line " + String(currentLine);
-                return false; // Return false on error
+                return false;
             }
 
             const int currentChannel = atoi(&line[1]);
             if (currentChannel > MAX_CHANNEL || currentChannel < MIN_CHANNEL)
             {
                 result = "invalid channel number at line " + String(currentLine);
-                return false; // Return false on error
+                return false;
             }
 
             log_v("current channel: %i", currentChannel);
