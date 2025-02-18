@@ -84,7 +84,8 @@ static void ntpCb(void *cb_arg)
     startDimmerTask();
 }
 
-static bool parseTimerFile(File &file, String &result) {
+static bool parseTimerFile(File &file, String &result)
+{
     log_i("parsing '%s'", file.path());
 
     constexpr int MAX_TIME = 86400;
@@ -104,20 +105,24 @@ static bool parseTimerFile(File &file, String &result) {
         int currentLine = 1;
         bool error = false;
 
-        while (file.available() && !error) {
-            if (line.isEmpty()) {
+        while (file.available() && !error)
+        {
+            if (line.isEmpty())
+            {
                 line = file.readStringUntil('\n');
                 currentLine++;
                 continue;
             }
 
-            if (line.length() < 3 || line[0] != '[' || !isdigit(line[1]) || line[2] != ']') {
+            if (line.length() < 3 || line[0] != '[' || !isdigit(line[1]) || line[2] != ']')
+            {
                 result = "invalid section header at line " + String(currentLine);
                 return false; // Return false on error
             }
 
             const int currentChannel = atoi(&line[1]);
-            if (currentChannel > MAX_CHANNEL || currentChannel < MIN_CHANNEL) {
+            if (currentChannel > MAX_CHANNEL || currentChannel < MIN_CHANNEL)
+            {
                 result = "invalid channel number at line " + String(currentLine);
                 return false; // Return false on error
             }
@@ -127,8 +132,10 @@ static bool parseTimerFile(File &file, String &result) {
             line = file.readStringUntil('\n');
             currentLine++;
 
-            while ((line.length() && isdigit(line[0])) || line.isEmpty()) {
-                if (line.isEmpty()) {
+            while ((line.length() && isdigit(line[0])) || line.isEmpty())
+            {
+                if (line.isEmpty())
+                {
                     line = file.readStringUntil('\n');
                     currentLine++;
                     if (line.isEmpty() && !file.available())
@@ -136,35 +143,39 @@ static bool parseTimerFile(File &file, String &result) {
                     continue;
                 }
 
-                if (line.length() < 3) {
+                if (line.length() < 3)
+                {
                     result = "invalid line " + String(currentLine);
                     return false;
                 }
 
-                if (line.indexOf(",") < 1) {
+                if (line.indexOf(",") < 1)
+                {
                     result = "invalid syntax in line " + String(currentLine) + " parsing channel " + String(currentChannel);
                     return false;
                 }
 
                 const int time = line.toInt();
-                if (time > MAX_SECONDS_IN_A_DAY || time < 0) {
+                if (time > MAX_SECONDS_IN_A_DAY || time < 0)
+                {
                     result = "invalid time value in line " + String(currentLine) + " parsing channel " + String(currentChannel);
                     return false;
                 }
 
                 const int percentage = line.substring(line.indexOf(",") + 1).toInt();
-                if (percentage > MAX_PERCENTAGE || percentage < MIN_PERCENTAGE) {
+                if (percentage > MAX_PERCENTAGE || percentage < MIN_PERCENTAGE)
+                {
                     result = "invalid percentage value in line " + String(currentLine) + " parsing channel " + String(currentChannel);
                     return false;
                 }
 
                 auto insertPos =
                     std::lower_bound(channel[currentChannel].begin(), channel[currentChannel].end(),
-                                     lightTimer_t{time, percentage}, [](const lightTimer_t &a, const lightTimer_t &b) {
-                                         return a.time < b.time;
-                                     });
+                                     lightTimer_t{time, percentage}, [](const lightTimer_t &a, const lightTimer_t &b)
+                                     { return a.time < b.time; });
 
-                if (insertPos != channel[currentChannel].end() && insertPos->time == time) {
+                if (insertPos != channel[currentChannel].end() && insertPos->time == time)
+                {
                     result = "duplicate timer entry at line " + String(currentLine) + " for channel " + String(currentChannel) + " at time " + String(time);
                     return false;
                 }
@@ -182,7 +193,8 @@ static bool parseTimerFile(File &file, String &result) {
         for (int index = 0; index < NUMBER_OF_CHANNELS; index++)
             if (channel[index].size())
                 channel[index].push_back({MAX_TIME, channel[index][0].percentage});
-            else {
+            else
+            {
                 channel[index].push_back({0, 0});
                 channel[index].push_back({MAX_TIME, 0});
             }
