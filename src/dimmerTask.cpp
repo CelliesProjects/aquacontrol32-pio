@@ -128,15 +128,17 @@ void dimmerTask(void *parameter)
             lastLcdRefresh = millis();
         }
 
+#if defined(CORE_DEBUG_LEVEL) && (CORE_DEBUG_LEVEL >= 4)
         static int lps = 0;
         lps++;
-        static time_t currentSecond = time(NULL);
-        if (time(NULL) != currentSecond)
+        static time_t savedSecond = time(NULL);
+        if (time(NULL) != savedSecond)
         {
-            if (lps != 100)
+            if (lps != TICK_RATE_HZ)
                 log_i("loops per second: %i", lps);
-            currentSecond++;
+            savedSecond++;
             lps = 0;
         }
+#endif
     }
 }
