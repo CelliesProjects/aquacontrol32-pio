@@ -155,7 +155,7 @@ bool saveMoonSettings(String &result)
         ScopedMutex lock(channelMutex, pdMS_TO_TICKS(1000));
         if (!lock.acquired())
         {
-            result = "channelMutex timeout";
+            result = "Mutex timeout";
             return false;
         }
 
@@ -354,7 +354,7 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
             {
                 ScopedMutex lock(channelMutex, pdMS_TO_TICKS(1000));
                 if (!lock.acquired())
-                    return request->reply(500, TEXT_PLAIN, "channelMutex timeout");
+                    return request->reply(500, TEXT_PLAIN, "Mutex timeout");
 
                 for (auto &timer : channel[channelIndex])
                     content += String(timer.time) + "," + String(timer.percentage) + "\n";
@@ -428,7 +428,7 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
             {
                 ScopedMutex lock(channelMutex, pdMS_TO_TICKS(1000));
                 if (!lock.acquired())
-                    return request->reply(500, TEXT_PLAIN, "channelMutex timeout");
+                    return request->reply(500, TEXT_PLAIN, "Mutex timeout");
 
                 channel[channelIndex].clear();
                 for (auto &timer : newTimers)
@@ -454,7 +454,7 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
             {
                 ScopedMutex lock(channelMutex, pdMS_TO_TICKS(1000));
                 if (!lock.acquired())
-                    return request->reply(500, TEXT_PLAIN, "channelMutex timeout");
+                    return request->reply(500, TEXT_PLAIN, "Mutex timeout");
 
                 for (int i = 0; i < NUMBER_OF_CHANNELS; i++)
                 {
@@ -496,7 +496,7 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
                   {
                     ScopedMutex lock(channelMutex, pdMS_TO_TICKS(1000));
                     if (!lock.acquired())
-                        return request->reply(500, TEXT_PLAIN, "channelMutex timeout");
+                        return request->reply(500, TEXT_PLAIN, "Mutex timeout");
 
                       for (int i = 0; i < NUMBER_OF_CHANNELS; i++)
                           fullMoonLevel[i] = newLevels[i];
