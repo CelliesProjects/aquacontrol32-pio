@@ -105,7 +105,7 @@
     let currentChannel = 0;
 
     const uploadTimers = (channel) => {
-        if (!confirm("Do you want to proceed?"))
+        if (!confirm("Click on 'OK' to instantly set and overwrite\nthe current set timers for this channel.\n\nDo you want to proceed?"))
             return;
 
         let csvData = '';
@@ -153,7 +153,7 @@
         <div id="actionButtons">
             <button id="reloadButton">Reload Timers</button>
             <button id="clearButton">Clear Timers</button>
-            <button onclick="uploadTimers(currentChannel)">Upload Timers</button>
+            <button onclick="uploadTimers(currentChannel)">Write to SD card</button>
             <button onclick="window.location = '/'">To the index</button>
         </div>
         <div id="timersList"></div>
@@ -483,7 +483,7 @@
 
                 let tooltipX = rect.left + x + offset;
                 if (rect.left + x > screenWidth / 2) {
-                    tooltipX = rect.left + x - (tooltipWidth + (2 *offset));
+                    tooltipX = rect.left + x - (tooltipWidth + (2 * offset));
                 }
 
                 tooltip.style.left = `${tooltipX}px`;
@@ -583,18 +583,15 @@
 
 
             document.getElementById("reloadButton").addEventListener("click", function () {
-                if (confirm("Do you want to proceed?"))
-                    downloadTimers(currentChannel);
+                downloadTimers(currentChannel);
             });
 
             document.getElementById("clearButton").addEventListener("click", function () {
-                if (confirm("Do you want to proceed?")) {
-                    channelTimers = [
-                        { time: 0, intensity: 0 },
-                        { time: 86400, intensity: 0 } // Mirrored from 0,0
-                    ];
-                    redrawCanvas();
-                }
+                channelTimers = [
+                    { time: 0, intensity: 0 },
+                    { time: 86400, intensity: 0 } // Mirrored from 0,0
+                ];
+                redrawCanvas();
             });
 
             document.addEventListener("DOMContentLoaded", function () {
