@@ -107,7 +107,7 @@ bool loadMoonSettings(String &result)
     SD.end();
 
     {
-        ScopedMutex lock(channelMutex, portMAX_DELAY);
+        ScopedMutex scopedMutex(channelMutex, portMAX_DELAY);
         std::copy(tempLevels.begin(), tempLevels.end(), fullMoonLevel);
     }
 
@@ -153,7 +153,7 @@ bool saveMoonSettings(String &result)
     }
 
     {
-        ScopedMutex lock(channelMutex, portMAX_DELAY); 
+        ScopedMutex scopedMutex(channelMutex, portMAX_DELAY); 
         for (int i = 0; i < NUMBER_OF_CHANNELS; ++i)
         {
             file.printf("[%d]\n", i);
@@ -348,7 +348,7 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
             content.reserve(256);
 
             {
-                ScopedMutex lock(channelMutex, portMAX_DELAY); 
+                ScopedMutex scopedMutex(channelMutex, portMAX_DELAY); 
                 for (auto &timer : channel[channelIndex])
                     content += String(timer.time) + "," + String(timer.percentage) + "\n";
             }
@@ -419,7 +419,7 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
             }
 
             {
-                ScopedMutex lock(channelMutex, portMAX_DELAY); 
+                ScopedMutex scopedMutex(channelMutex, portMAX_DELAY); 
                 channel[channelIndex].clear();
                 for (auto &timer : newTimers)
                     channel[channelIndex].push_back(timer);
