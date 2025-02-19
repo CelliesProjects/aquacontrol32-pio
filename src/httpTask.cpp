@@ -111,7 +111,6 @@ bool loadMoonSettings(String &result)
         std::copy(tempLevels.begin(), tempLevels.end(), fullMoonLevel);
     }
 
-    log_i("Loaded moon settings from %s", MOON_SETTINGS_FILE);
     result = "Moon settings processed";
     return true;
 }
@@ -121,7 +120,6 @@ bool saveMoonSettings(String &result)
     if (!spiMutex)
     {
         result = "SPI mutex not initialized";
-        log_e("%s", result.c_str());
         return false;
     }
 
@@ -130,14 +128,12 @@ bool saveMoonSettings(String &result)
     if (!scopedMutex.acquired())
     {
         result = "Mutex timeout";
-        log_w("%s", result.c_str());
         return false;
     }
 
     if (!SD.begin(SDCARD_SS))
     {
         result = "Failed to initialize SD card";
-        log_e("%s", result.c_str());
         return false;
     }
 
@@ -148,7 +144,6 @@ bool saveMoonSettings(String &result)
         result = "Failed to open ";
         result.concat(MOON_SETTINGS_FILE);
         result.concat(" for writing");
-        log_e("%s", result.c_str());
         return false;
     }
 
@@ -166,7 +161,6 @@ bool saveMoonSettings(String &result)
 
     result = "Saved moon settings to ";
     result.concat(MOON_SETTINGS_FILE);
-    log_i("%s", result.c_str());
     return true;
 }
 
@@ -425,8 +419,6 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
                     channel[channelIndex].push_back(timer);
             }
 
-            log_i("Cleared and added %i new timers to channel %i", channel[channelIndex].size(), channelIndex);
-
             String result;
             result.reserve(128);
 
@@ -522,10 +514,8 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
                       ScopedMutex scopedMutex(spiMutex);
 
                       if (!scopedMutex.acquired())
-                      {
-                          log_w("Mutex timeout");
                           return request->reply(500, TEXT_PLAIN, "Server busy, try again later");
-                      }
+
                       success = handleFileUpload(file, filePath, result);
                   }
 
