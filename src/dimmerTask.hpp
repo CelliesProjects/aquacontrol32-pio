@@ -4,7 +4,6 @@
 #include <esp32-hal.h>
 #include <hal/ledc_types.h>
 #include <vector>
-#include <mutex>
 #include <moonPhase.h>
 
 #include "ScopedMutex.h"

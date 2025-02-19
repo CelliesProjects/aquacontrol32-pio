@@ -4,7 +4,6 @@
 #include <WiFi.h>
 #include <FS.h>
 #include <SD.h>
-#include <mutex>
 #include <optional>
 #include <freertos/semphr.h>
 

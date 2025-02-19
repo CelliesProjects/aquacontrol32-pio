@@ -6,7 +6,6 @@
 #include <esp_sntp.h>
 #include <freertos/semphr.h>
 #include <vector>
-#include <mutex>
 
 #include "ScopedMutex.h"
 #include "secrets.h"
