@@ -14,6 +14,15 @@ void messageOnLcd(const char *str)
     xQueueSend(lcdQueue, &msg, portMAX_DELAY);
 }
 
+void pushSpriteLocked(LGFX_Sprite &sprite, int32_t y)
+{
+    ScopedMutex lock(spiMutex, pdMS_TO_TICKS(5));
+    if (lock.acquired())
+        sprite.pushSprite(0, y);
+    else
+        log_w("Failed to acquire SPI mutex for pushSprite()");    
+}
+
 static void showSystemMessage(char *str)
 {
     const GFXfont &font = lgfx::fonts::DejaVu18;
@@ -41,11 +50,7 @@ static void showSystemMessage(char *str)
         pch = strtok(NULL, "\n");
     }
 
-    ScopedMutex scopedMutex(spiMutex);
-    if (scopedMutex.acquired())
-        sysMess.pushSprite(0, 96);
-    else
-        log_w("Failed to acquire SPI mutex for pushSprite()");
+    pushSpriteLocked(sysMess, 96);
 }
 
 static void updateLights()
@@ -90,11 +95,7 @@ static void updateLights()
         lightBars.fillRect(THIS_OFFSET - (BAR_WIDTH / 2), BAR_HEIGHT, BAR_WIDTH, -filledHeight, 1);
     }
 
-    ScopedMutex scopedMutex(spiMutex);
-    if (scopedMutex.acquired())
-        lightBars.pushSprite(0, yPos);
-    else
-        log_w("Failed to acquire SPI mutex for pushSprite()");
+    pushSpriteLocked(lightBars, yPos);
 }
 
 static void showTemp(const float temperature)
@@ -125,11 +126,7 @@ static void showTemp(const float temperature)
     else
         temp.drawString("NO SENSOR", temp.width() >> 1, 3 + (font.yAdvance >> 1), &font);
 
-    ScopedMutex scopedMutex(spiMutex);
-    if (scopedMutex.acquired())
-        temp.pushSprite(0, 25);
-    else
-        log_w("Failed to acquire SPI mutex for pushSprite()");
+    pushSpriteLocked(temp, 25);
 }
 
 void showIP(const char *ip)
@@ -155,11 +152,7 @@ void showIP(const char *ip)
     ipAddress.setTextDatum(CC_DATUM);
     ipAddress.drawString(buffer, ipAddress.width() >> 1, 2 + (font.yAdvance >> 1), &font);
 
-    ScopedMutex scopedMutex(spiMutex);
-    if (scopedMutex.acquired())
-        ipAddress.pushSprite(0, 0);
-    else
-        log_w("Failed to acquire SPI mutex for pushSprite()");
+    pushSpriteLocked(ipAddress, 0);
 }
 
 void handleNextMessage()
@@ -204,7 +197,7 @@ void lcdTask(void *parameter)
     }
 
     {
-        ScopedMutex scopedMutex(spiMutex, portMAX_DELAY);
+        ScopedMutex scopedMutex(spiMutex);
         lcd.init();
     }
 

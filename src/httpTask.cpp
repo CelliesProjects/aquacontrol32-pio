@@ -44,9 +44,8 @@ bool loadMoonSettings(String &result)
         return false;
     }
 
-    ScopedMutex scopedMutex(spiMutex);
-
-    if (!scopedMutex.acquired())
+    ScopedMutex lock(spiMutex, pdMS_TO_TICKS(1000));
+    if (!lock.acquired())
     {
         result = "Mutex timeout";
         return false;
@@ -107,7 +106,13 @@ bool loadMoonSettings(String &result)
     SD.end();
 
     {
-        ScopedMutex scopedMutex(channelMutex, portMAX_DELAY);
+        ScopedMutex lock(channelMutex, pdMS_TO_TICKS(1000));
+        if (!lock.acquired())
+        {
+            result = "channelMutex timeout";
+            return false;
+        }
+
         std::copy(tempLevels.begin(), tempLevels.end(), fullMoonLevel);
     }
 
@@ -123,9 +128,8 @@ bool saveMoonSettings(String &result)
         return false;
     }
 
-    ScopedMutex scopedMutex(spiMutex);
-
-    if (!scopedMutex.acquired())
+    ScopedMutex lock(spiMutex, pdMS_TO_TICKS(1000));
+    if (!lock.acquired())
     {
         result = "Mutex timeout";
         return false;
@@ -148,7 +152,13 @@ bool saveMoonSettings(String &result)
     }
 
     {
-        ScopedMutex scopedMutex(channelMutex, portMAX_DELAY); 
+        ScopedMutex lock(channelMutex, pdMS_TO_TICKS(1000));
+        if (!lock.acquired())
+        {
+            result = "channelMutex timeout";
+            return false;
+        }
+
         for (int i = 0; i < NUMBER_OF_CHANNELS; ++i)
         {
             file.printf("[%d]\n", i);
@@ -333,7 +343,7 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
         "/api/timers", HTTP_GET, [](PsychicRequest *request)
         {
             auto validChannel = validateChannel(request);
-            if (!validChannel) 
+            if (!validChannel)
                 return ESP_OK;
 
             uint8_t channelIndex = *validChannel;
@@ -342,7 +352,10 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
             content.reserve(256);
 
             {
-                ScopedMutex scopedMutex(channelMutex, portMAX_DELAY); 
+                ScopedMutex lock(channelMutex, pdMS_TO_TICKS(1000));
+                if (!lock.acquired())
+                    return request->reply(500, TEXT_PLAIN, "channelMutex timeout");
+
                 for (auto &timer : channel[channelIndex])
                     content += String(timer.time) + "," + String(timer.percentage) + "\n";
             }
@@ -413,7 +426,10 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
             }
 
             {
-                ScopedMutex scopedMutex(channelMutex, portMAX_DELAY); 
+                ScopedMutex lock(channelMutex, pdMS_TO_TICKS(1000));
+                if (!lock.acquired())
+                    return request->reply(500, TEXT_PLAIN, "channelMutex timeout");
+
                 channel[channelIndex].clear();
                 for (auto &timer : newTimers)
                     channel[channelIndex].push_back(timer);
@@ -424,10 +440,10 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
 
             const bool success = saveDefaultTimers(result);
 
-            return request->reply(success ? 200 : 500, TEXT_PLAIN, result.c_str()); }
+            return request->reply(success ? 200 : 500, TEXT_PLAIN, result.c_str());
+        }
 
-        )
-    ->setAuthentication(WEBIF_USER, WEBIF_PASSWORD);
+    )->setAuthentication(WEBIF_USER, WEBIF_PASSWORD);
 
     server.on(
         "/api/moonlevels", HTTP_GET, [](PsychicRequest *request)
@@ -436,7 +452,10 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
             responseStr.reserve(NUMBER_OF_CHANNELS * 8);
 
             {
-                ScopedMutex lock(channelMutex, portMAX_DELAY); 
+                ScopedMutex lock(channelMutex, pdMS_TO_TICKS(1000));
+                if (!lock.acquired())
+                    return request->reply(500, TEXT_PLAIN, "channelMutex timeout");
+
                 for (int i = 0; i < NUMBER_OF_CHANNELS; i++)
                 {
                     responseStr += String(fullMoonLevel[i]);
@@ -475,7 +494,10 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
                       return request->reply(400, TEXT_PLAIN, "Incorrect number of values");
 
                   {
-                      ScopedMutex lock(channelMutex, portMAX_DELAY); 
+                    ScopedMutex lock(channelMutex, pdMS_TO_TICKS(1000));
+                    if (!lock.acquired())
+                        return request->reply(500, TEXT_PLAIN, "channelMutex timeout");
+
                       for (int i = 0; i < NUMBER_OF_CHANNELS; i++)
                           fullMoonLevel[i] = newLevels[i];
                   }
@@ -511,9 +533,8 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
                   
                   bool success;
                   {
-                      ScopedMutex scopedMutex(spiMutex);
-
-                      if (!scopedMutex.acquired())
+                      ScopedMutex lock(spiMutex, pdMS_TO_TICKS(1000));
+                      if (!lock.acquired())
                           return request->reply(500, TEXT_PLAIN, "Server busy, try again later");
 
                       success = handleFileUpload(file, filePath, result);

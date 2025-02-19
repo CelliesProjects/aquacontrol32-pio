@@ -94,7 +94,12 @@ static bool parseTimerFile(File &file, String &result)
     constexpr int MAX_CHANNEL = NUMBER_OF_CHANNELS - 1;
 
     {
-        ScopedMutex lock(channelMutex, portMAX_DELAY); 
+        ScopedMutex lock(channelMutex, pdMS_TO_TICKS(1000));
+        if (!lock.acquired())
+        {
+            result = "Mutex timeout";
+            return false;
+        }        
 
         for (int i = 0; i < NUMBER_OF_CHANNELS;)
             channel[i++].clear();
@@ -210,9 +215,8 @@ bool saveDefaultTimers(String &result)
         return false;
     }
 
-    ScopedMutex scopedMutex(spiMutex);
-
-    if (!scopedMutex.acquired())
+    ScopedMutex lock(spiMutex, pdMS_TO_TICKS(1000));
+    if (!lock.acquired())
     {
         result = "Mutex timeout";
         log_w("%s", result.c_str());
@@ -238,7 +242,14 @@ bool saveDefaultTimers(String &result)
     }
 
     {
-        ScopedMutex lock(channelMutex, portMAX_DELAY); 
+        ScopedMutex lock(channelMutex, pdMS_TO_TICKS(1000));
+        if (!lock.acquired())
+        {
+            result = "Mutex timeout";
+            log_w("%s", result.c_str());
+            return false;
+        }       
+
         for (int i = 0; i < NUMBER_OF_CHANNELS; ++i)
         {
             file.printf("[%d]\n", i); // Write channel header
@@ -265,9 +276,8 @@ bool loadDefaultTimers(String &result)
         return false;
     }
 
-    ScopedMutex scopedMutex(spiMutex);
-
-    if (!scopedMutex.acquired())
+    ScopedMutex lock(spiMutex, pdMS_TO_TICKS(1000));
+    if (!lock.acquired())
     {
         result = "Mutex timeout";
         return false;
@@ -317,7 +327,7 @@ void setup(void)
         while (1)
             delay(100);
     }
-    xSemaphoreGive(spiMutex); 
+    xSemaphoreGive(spiMutex);
 
     channelMutex = xSemaphoreCreateMutex();
     if (!channelMutex)
@@ -326,7 +336,7 @@ void setup(void)
         while (1)
             delay(100);
     }
-    xSemaphoreGive(channelMutex); 
+    xSemaphoreGive(channelMutex);
 
     if (!lcdQueue)
     {
