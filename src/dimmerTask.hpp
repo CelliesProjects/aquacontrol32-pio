@@ -7,6 +7,7 @@
 #include <mutex>
 #include <moonPhase.h>
 
+#include "ScopedMutex.h"
 #include "lightTimer.h"
 #include "lcdMessage.h"
 #include "websocketMessage.h"
@@ -17,7 +18,7 @@ extern QueueHandle_t lcdQueue;
 extern QueueHandle_t websocketQueue;
 
 std::vector<lightTimer_t> channel[NUMBER_OF_CHANNELS];
-std::mutex channelMutex;
+SemaphoreHandle_t channelMutex;
 
 float currentPercentage[NUMBER_OF_CHANNELS] = {0, 0, 0, 0, 0};
 float fullMoonLevel[NUMBER_OF_CHANNELS] = {0, 0, 0, 0, 0};

@@ -59,38 +59,41 @@ void dimmerTask(void *parameter)
         vTaskDelayUntil(&xLastWakeTime, ticksToWait);
 
         {
-            std::lock_guard<std::mutex> lock(channelMutex);
+            ScopedMutex scopedMutex(channelMutex, pdTICKS_TO_MS(1));
 
-            const auto msElapsedToday = msSinceMidnight();
-
-            if (!msElapsedToday) /* to prevent flashing lights at 00:00:000 */
-                continue;
-
-            for (int index = 0; index < NUMBER_OF_CHANNELS; index++)
+            if (scopedMutex.acquired())
             {
-                int currentTimer = 0;
-                while (channel[index][currentTimer].time * 1000U < msElapsedToday)
-                    currentTimer++;
+                const auto msElapsedToday = msSinceMidnight();
 
-                currentTimer = (currentTimer >= channel[index].size()) ? channel[index].size() - 1 : currentTimer;
+                if (!msElapsedToday) /* to prevent flashing lights at 00:00:000 */
+                    continue;
 
-                const float newPercentage =
-                    (currentTimer > 0 && channel[index][currentTimer].percentage != channel[index][currentTimer - 1].percentage)
-                        ? mapf(msElapsedToday,
-                               channel[index][currentTimer - 1].time * 1000U,
-                               channel[index][currentTimer].time * 1000U,
-                               channel[index][currentTimer - 1].percentage,
-                               channel[index][currentTimer].percentage)
-                        : channel[index][currentTimer].percentage;
+                for (int index = 0; index < NUMBER_OF_CHANNELS; index++)
+                {
+                    int currentTimer = 0;
+                    while (channel[index][currentTimer].time * 1000U < msElapsedToday)
+                        currentTimer++;
 
-                const float currentMoonLevel = fullMoonLevel[index] * moon.percentLit;
+                    currentTimer = (currentTimer >= channel[index].size()) ? channel[index].size() - 1 : currentTimer;
 
-                currentPercentage[index] = newPercentage < currentMoonLevel ? currentMoonLevel : newPercentage;
+                    const float newPercentage =
+                        (currentTimer > 0 && channel[index][currentTimer].percentage != channel[index][currentTimer - 1].percentage)
+                            ? mapf(msElapsedToday,
+                                   channel[index][currentTimer - 1].time * 1000U,
+                                   channel[index][currentTimer].time * 1000U,
+                                   channel[index][currentTimer - 1].percentage,
+                                   channel[index][currentTimer].percentage)
+                            : channel[index][currentTimer].percentage;
 
-                const int dutyCycle = mapf(currentPercentage[index], 0, 100, 0, LEDC_MAX_VALUE);
+                    const float currentMoonLevel = fullMoonLevel[index] * moon.percentLit;
 
-                if (!ledcWrite(ledPin[index], dutyCycle))
-                    log_w("Error setting duty cycle %i on pin %i", dutyCycle, ledPin[index]);
+                    currentPercentage[index] = newPercentage < currentMoonLevel ? currentMoonLevel : newPercentage;
+
+                    const int dutyCycle = mapf(currentPercentage[index], 0, 100, 0, LEDC_MAX_VALUE);
+
+                    if (!ledcWrite(ledPin[index], dutyCycle))
+                        log_w("Error setting duty cycle %i on pin %i", dutyCycle, ledPin[index]);
+                }
             }
         }
 

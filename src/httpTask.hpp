@@ -19,7 +19,7 @@ extern const char *WEBIF_PASSWORD;
 
 extern std::vector<lightTimer_t> channel[NUMBER_OF_CHANNELS];
 extern float fullMoonLevel[NUMBER_OF_CHANNELS];
-extern std::mutex channelMutex;
+extern SemaphoreHandle_t channelMutex;
 extern SemaphoreHandle_t spiMutex;
 
 extern bool saveDefaultTimers(String &result);

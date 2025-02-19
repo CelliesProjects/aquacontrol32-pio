@@ -27,7 +27,7 @@ extern void sensorTask(void *parameter);
 extern bool loadMoonSettings(String &result);
 
 extern std::vector<lightTimer_t> channel[NUMBER_OF_CHANNELS];
-extern std::mutex channelMutex;
+extern SemaphoreHandle_t channelMutex;
 extern float fullMoonLevel[NUMBER_OF_CHANNELS];
 
 static void startDimmerTask()
@@ -95,7 +95,7 @@ static bool parseTimerFile(File &file, String &result)
     constexpr int MAX_CHANNEL = NUMBER_OF_CHANNELS - 1;
 
     {
-        std::lock_guard<std::mutex> lock(channelMutex);
+        ScopedMutex lock(channelMutex, portMAX_DELAY); 
 
         for (int i = 0; i < NUMBER_OF_CHANNELS;)
             channel[i++].clear();
@@ -239,7 +239,7 @@ bool saveDefaultTimers(String &result)
     }
 
     {
-        std::lock_guard<std::mutex> lock(channelMutex);
+        ScopedMutex lock(channelMutex, portMAX_DELAY); 
         for (int i = 0; i < NUMBER_OF_CHANNELS; ++i)
         {
             file.printf("[%d]\n", i); // Write channel header
@@ -318,6 +318,16 @@ void setup(void)
         while (1)
             delay(100);
     }
+    xSemaphoreGive(spiMutex); 
+
+    channelMutex = xSemaphoreCreateMutex();
+    if (!channelMutex)
+    {
+        log_e("Failed to create channel mutex! system halted!");
+        while (1)
+            delay(100);
+    }
+    xSemaphoreGive(channelMutex); 
 
     if (!lcdQueue)
     {
