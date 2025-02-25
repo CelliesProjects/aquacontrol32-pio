@@ -8,6 +8,10 @@ Besides a led dimming board, you need a supported device and Visual Studio Code 
 
 Supported devices for now are M5Stack Grey/Fire and the ESP32-S3-BOX-Lite.<br>The display driver is LovyanGFX so porting to a new device should be pretty easy and some more devices will be supported.
 
+## Editor screenshot
+
+![editor](https://github.com/user-attachments/assets/65d36678-d3d9-4f20-9c3a-0ab2893e1b3b)
+
 ## How to setup this app
 
 ### Hardware needed
