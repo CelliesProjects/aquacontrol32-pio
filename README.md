@@ -28,7 +28,7 @@ This app is the successor to aquacontrol32 and is compatible with the file forma
 
 - Visual Studio Code
 - PlatformIO
-- [The latest release of aquacontrol](releases/latest) - unzip the file to a local folder.
+- [The latest release of aquacontrol](https://github.com/CelliesProjects/aquacontrol32-pio/releases/latest) - unzip the file to a local folder.
 
 ## 2. Open this folder in platformIO
 
