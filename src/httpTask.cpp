@@ -10,23 +10,24 @@ static constexpr char *IF_MODIFIED_SINCE = "If-Modified-Since";
 static constexpr char *IF_NONE_MATCH = "If-None-Match";
 
 static char contentCreationTime[30];
+static char etagValue[16];
 
-static inline bool samePageIsCached(PsychicRequest *request, const char *date, const char *etag)
+static inline bool samePageIsCached(PsychicRequest *request)
 {
-    bool modifiedSince = request->hasHeader(IF_MODIFIED_SINCE) && request->header(IF_MODIFIED_SINCE).equals(date);
-    bool noneMatch = request->hasHeader(IF_NONE_MATCH) && request->header(IF_NONE_MATCH).equals(etag);
+    bool modifiedSince = request->hasHeader(IF_MODIFIED_SINCE) && request->header(IF_MODIFIED_SINCE).equals(contentCreationTime);
+    bool noneMatch = request->hasHeader(IF_NONE_MATCH) && request->header(IF_NONE_MATCH).equals(etagValue);
 
     return modifiedSince || noneMatch;
 }
 
-static void addStaticContentHeaders(PsychicResponse &response, const char *date, const char *etag)
+static void addStaticContentHeaders(PsychicResponse &response)
 {
-    response.addHeader("Last-Modified", date);
+    response.addHeader("Last-Modified", contentCreationTime);
     response.addHeader("Cache-Control", "public, max-age=31536000");
-    response.addHeader("ETag", etag);
+    response.addHeader("ETag", etagValue);
 }
 
-static char etagValue[16];
+
 static void generateETag(const char *date)
 {
     uint32_t hash = 0;
@@ -266,14 +267,14 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
     server.on(
         "/", HTTP_GET, [](PsychicRequest *request)
         {
-            if (samePageIsCached(request, contentCreationTime, etagValue))
+            if (samePageIsCached(request))
                 return request->reply(304);
 
             extern const uint8_t index_start[] asm("_binary_src_webui_index_html_gz_start");
             extern const uint8_t index_end[] asm("_binary_src_webui_index_html_gz_end");
 
             PsychicResponse response = PsychicResponse(request);
-            addStaticContentHeaders(response, contentCreationTime, etagValue);
+            addStaticContentHeaders(response);
             response.addHeader(CONTENT_ENCODING, GZIP);
             response.setContentType(TEXT_HTML);
             const size_t size = index_end - index_start;
@@ -285,14 +286,14 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
     server.on(
         "/editor", HTTP_GET, [](PsychicRequest *request)
         {
-            if (samePageIsCached(request, contentCreationTime, etagValue))
+            if (samePageIsCached(request))
                 return request->reply(304);
 
             extern const uint8_t editor_start[] asm("_binary_src_webui_editor_html_gz_start");
             extern const uint8_t editor_end[] asm("_binary_src_webui_editor_html_gz_end");   
 
             PsychicResponse response = PsychicResponse(request);
-            addStaticContentHeaders(response, contentCreationTime, etagValue);
+            addStaticContentHeaders(response);
             response.addHeader(CONTENT_ENCODING, GZIP);
             response.setContentType(TEXT_HTML);
             const size_t size = editor_end - editor_start;
@@ -304,14 +305,14 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
     server.on(
         "/fileupload", HTTP_GET, [](PsychicRequest *request)
         {
-            if (samePageIsCached(request, contentCreationTime, etagValue))
+            if (samePageIsCached(request))
                 return request->reply(304);
 
             extern const uint8_t upload_start[] asm("_binary_src_webui_fileupload_html_gz_start");
             extern const uint8_t upload_end[] asm("_binary_src_webui_fileupload_html_gz_end");   
 
             PsychicResponse response = PsychicResponse(request);
-            addStaticContentHeaders(response, contentCreationTime, etagValue);
+            addStaticContentHeaders(response);
             response.addHeader(CONTENT_ENCODING, GZIP);
             response.setContentType(TEXT_HTML);
             const size_t size = upload_end - upload_start;
@@ -323,14 +324,14 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
     server.on(
         "/moonsetup", HTTP_GET, [](PsychicRequest *request)
         {
-            if (samePageIsCached(request, contentCreationTime, etagValue))
+            if (samePageIsCached(request))
                 return request->reply(304);
 
             extern const uint8_t moon_start[] asm("_binary_src_webui_moonsetup_html_gz_start");
             extern const uint8_t moon_end[] asm("_binary_src_webui_moonsetup_html_gz_end");
 
             PsychicResponse response = PsychicResponse(request);
-            addStaticContentHeaders(response, contentCreationTime, etagValue);
+            addStaticContentHeaders(response);
             response.addHeader(CONTENT_ENCODING, GZIP);
             response.setContentType(TEXT_HTML);
             const size_t size = moon_end - moon_start;
