@@ -235,7 +235,7 @@ time_t time_diff(struct tm *start, struct tm *end)
 
 static bool handleFileUpload(const String &data, const String &filePath, String &result)
 {
-    
+
     ScopedFile scopedFile(filePath, FileMode::Write, SDCARD_SS, 20000000);
     if (!scopedFile.isValid())
     {

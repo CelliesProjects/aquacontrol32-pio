@@ -36,8 +36,6 @@ enum class FileMode
 class ScopedFile
 {
 public:
-
-
     ScopedFile(const char *filename, FileMode mode = FileMode::Read, uint8_t sdPin = SS, uint32_t frequency = 4000000);
     ScopedFile(const String &filename, FileMode mode = FileMode::Read, uint8_t sdPin = SS, uint32_t frequency = 4000000);
     ~ScopedFile();
