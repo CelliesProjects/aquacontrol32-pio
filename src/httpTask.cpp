@@ -76,7 +76,7 @@ bool loadMoonSettings(String &result)
 
     std::array<float, NUMBER_OF_CHANNELS> tempMoonLevel;
     {
-        ScopedFile scopedFile(MOON_SETTINGS_FILE, OPEN_READ, SDCARD_SS, 20000000);
+        ScopedFile scopedFile(MOON_SETTINGS_FILE, FileMode::Read, SDCARD_SS, 20000000);
         if (!scopedFile.isValid())
         {
             result = "SD Card mount or file open failed";
@@ -149,7 +149,7 @@ bool saveMoonSettings(String &result)
         return false;
     }
 
-    ScopedFile scopedFile(MOON_SETTINGS_FILE, OPEN_WRITE, SDCARD_SS, 20000000);
+    ScopedFile scopedFile(MOON_SETTINGS_FILE, FileMode::Write, SDCARD_SS, 20000000);
     if (!scopedFile.isValid())
     {
         result = "SD Card mount or file open failed";
@@ -236,7 +236,7 @@ time_t time_diff(struct tm *start, struct tm *end)
 static bool handleFileUpload(const String &data, const String &filePath, String &result)
 {
     
-    ScopedFile scopedFile(filePath, OPEN_WRITE, SDCARD_SS, 20000000);
+    ScopedFile scopedFile(filePath, FileMode::Write, SDCARD_SS, 20000000);
     if (!scopedFile.isValid())
     {
         result = "SD Card mount or file open failed";
