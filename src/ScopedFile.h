@@ -1,7 +1,7 @@
 /*
 MIT License
 
-Copyright (c) 2025 Cellie https://github.com/CelliesProjects/LGFX-ScreenShot
+Copyright (c) 2025 Cellie https://github.com/CelliesProjects/aquacontrol32-pio/
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
