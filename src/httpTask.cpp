@@ -51,7 +51,7 @@ bool loadMoonSettings(String &result)
         return false;
     }
 
-    std::array<float, NUMBER_OF_CHANNELS> tempLevels;
+    std::array<float, NUMBER_OF_CHANNELS> tempMoonLevel;
     {
         ScopedFile scopedFile(MOON_SETTINGS_FILE, OPEN_READ, SDCARD_SS, 20000000);
         if (!scopedFile.isValid())
@@ -92,7 +92,7 @@ bool loadMoonSettings(String &result)
                 return false;
             }
 
-            tempLevels[i] = level;
+            tempMoonLevel[i] = level;
         }
     }
 
@@ -104,7 +104,7 @@ bool loadMoonSettings(String &result)
             return false;
         }
 
-        std::copy(tempLevels.begin(), tempLevels.end(), fullMoonLevel);
+        std::copy(tempMoonLevel.begin(), tempMoonLevel.end(), fullMoonLevel);
     }
 
     result = "Moon settings processed";
@@ -212,32 +212,24 @@ time_t time_diff(struct tm *start, struct tm *end)
 
 static bool handleFileUpload(const String &data, const String &filePath, String &result)
 {
-    if (!SD.begin(SDCARD_SS))
+    
+    ScopedFile scopedFile(filePath, OPEN_WRITE, SDCARD_SS, 20000000);
+    if (!scopedFile.isValid())
     {
-        result = "SD card initialization failed";
+        result = "SD Card mount or file open failed";
         return false;
     }
 
-    File destFile = SD.open(filePath, FILE_WRITE);
-    if (!destFile)
-    {
-        SD.end();
-        result = "Failed to open file for writing";
-        return false;
-    }
+    File &destFile = scopedFile.get();
 
     const size_t fileSize = data.length();
 
     if (destFile.write(reinterpret_cast<const uint8_t *>(data.c_str()), fileSize) != fileSize)
     {
-        destFile.close();
-        SD.end();
         result = "File write error";
         return false;
     }
 
-    destFile.close();
-    SD.end();
     result = "File saved successfully!";
     return true;
 }
