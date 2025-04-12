@@ -10,6 +10,7 @@
 #include <PsychicHttp.h>
 
 #include "ScopedMutex.h"
+#include "ScopedFile.h"
 #include "lightTimer.h"
 #include "websocketMessage.h"
 
