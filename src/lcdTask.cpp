@@ -213,12 +213,6 @@ void handleNextMessage()
 
 void lcdTask(void *parameter)
 {
-    if (!spiMutex)
-    {
-        log_e("SPI mutex not initialized");
-        vTaskDelete(NULL);
-    }
-
     {
         ScopedMutex scopedMutex(spiMutex);
         lcd.init();
