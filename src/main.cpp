@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "ScopedMutex.h"
+#include "ScopedFile.h"
 #include "secrets.h"
 #include "lcdMessage.h"
 #include "lightTimer.h"
@@ -99,7 +100,7 @@ static bool parseTimerFile(File &file, String &result)
         {
             result = "Mutex timeout";
             return false;
-        }        
+        }
 
         for (int i = 0; i < NUMBER_OF_CHANNELS;)
             channel[i++].clear();
@@ -223,24 +224,14 @@ bool saveDefaultTimers(String &result)
         return false;
     }
 
-    if (!SD.begin(SDCARD_SS))
+    ScopedFile scopedFile(DEFAULT_TIMERFILE, OPEN_WRITE, SDCARD_SS, 20000000);
+    if (!scopedFile.isValid())
     {
-        result = "Failed to initialize SD card";
-        log_e("%s", result.c_str());
+        result = "SD Card mount or file open failed";
         return false;
     }
 
-    File file = SD.open(DEFAULT_TIMERFILE, FILE_WRITE);
-    if (!file)
-    {
-        SD.end();
-        result = "Failed to open ";
-        result.concat(DEFAULT_TIMERFILE);
-        result.concat(" for writing");
-        log_e("%s", result.c_str());
-        return false;
-    }
-
+    File &file = scopedFile.get();
     {
         ScopedMutex lock(channelMutex, pdMS_TO_TICKS(1000));
         if (!lock.acquired())
@@ -248,7 +239,7 @@ bool saveDefaultTimers(String &result)
             result = "Mutex timeout";
             log_w("%s", result.c_str());
             return false;
-        }       
+        }
 
         for (int i = 0; i < NUMBER_OF_CHANNELS; ++i)
         {
@@ -258,9 +249,6 @@ bool saveDefaultTimers(String &result)
                     file.printf("%d,%d\n", timer.time, timer.percentage);
         }
     }
-
-    file.close();
-    SD.end();
 
     result = "Saved timers to ";
     result.concat(DEFAULT_TIMERFILE);
@@ -283,30 +271,15 @@ bool loadDefaultTimers(String &result)
         return false;
     }
 
-    if (!SD.begin(SDCARD_SS))
+    ScopedFile scopedFile(DEFAULT_TIMERFILE, OPEN_READ, SDCARD_SS, 20000000);
+    if (!scopedFile.isValid())
     {
-        result = "SD initialization failed!";
+        result = "SD Card mount or file open failed";
         return false;
     }
 
-    if (!SD.exists(DEFAULT_TIMERFILE))
-    {
-        result = "Timer file not found";
-        return false;
-    }
-
-    File file = SD.open(DEFAULT_TIMERFILE);
-    if (!file)
-    {
-        result = "Could not open timer file";
-        return false;
-    }
-
+    File &file = scopedFile.get();
     const bool success = parseTimerFile(file, result);
-
-    file.close();
-    SD.end();
-
     return success;
 }
 
