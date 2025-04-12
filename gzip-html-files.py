@@ -1,4 +1,3 @@
-import os
 import gzip
 from pathlib import Path
 
