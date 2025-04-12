@@ -27,14 +27,19 @@ SOFTWARE.
 #include <Arduino.h>
 #include <SD.h>
 
-#define OPEN_WRITE true
-#define OPEN_READ false
+enum class FileMode
+{
+    Read,
+    Write
+};
 
 class ScopedFile
 {
 public:
-    ScopedFile(const char *filename, bool openToWrite = false, uint8_t sdPin = SS, uint32_t frequency = 4000000);
-    ScopedFile(const String &filename, bool openToWrite = false, uint8_t sdPin = SS, uint32_t frequency = 4000000);
+
+
+    ScopedFile(const char *filename, FileMode mode = FileMode::Read, uint8_t sdPin = SS, uint32_t frequency = 4000000);
+    ScopedFile(const String &filename, FileMode mode = FileMode::Read, uint8_t sdPin = SS, uint32_t frequency = 4000000);
     ~ScopedFile();
 
     File &get();
@@ -47,7 +52,7 @@ public:
 
 private:
     File file_;
-    void open(const char *filename, bool openToWrite, uint8_t sdPin, uint32_t frequency);
+    void open(const char *filename, FileMode mode, uint8_t sdPin, uint32_t frequency);
 };
 
 #endif // SCOPEDFILE_H

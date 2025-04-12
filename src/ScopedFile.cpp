@@ -23,14 +23,14 @@ SOFTWARE.
 */
 #include "ScopedFile.h"
 
-ScopedFile::ScopedFile(const char *filename, bool openToWrite, uint8_t sdPin, uint32_t frequency)
+ScopedFile::ScopedFile(const char *filename, FileMode mode, uint8_t sdPin, uint32_t frequency)
 {
-    open(filename, openToWrite, sdPin,frequency);
+    open(filename, mode, sdPin, frequency);
 }
 
-ScopedFile::ScopedFile(const String &filename, bool openToWrite, uint8_t sdPin, uint32_t frequency)
+ScopedFile::ScopedFile(const String &filename, FileMode mode, uint8_t sdPin, uint32_t frequency)
 {
-    open(filename.c_str(), openToWrite, sdPin,frequency);
+    open(filename.c_str(), mode, sdPin, frequency);
 }
 
 ScopedFile::~ScopedFile()
@@ -52,12 +52,12 @@ bool ScopedFile::isValid() const
     return file_;
 }
 
-void ScopedFile::open(const char *filename, bool openToWrite, uint8_t sdPin, uint32_t frequency)
+void ScopedFile::open(const char *filename, FileMode mode, uint8_t sdPin, uint32_t frequency)
 {
     if (!SD.begin(sdPin, SPI, frequency))
     {
         file_ = File();
         return;
     }
-    file_ = SD.open(filename, openToWrite ? FILE_WRITE : FILE_READ);
+    file_ = SD.open(filename, (mode == FileMode::Write) ? FILE_WRITE : FILE_READ);
 }

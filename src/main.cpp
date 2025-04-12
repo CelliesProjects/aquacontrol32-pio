@@ -247,7 +247,7 @@ bool saveDefaultTimers(String &result)
         return false;
     }
 
-    ScopedFile scopedFile(DEFAULT_TIMERFILE, OPEN_WRITE, SDCARD_SS, 20000000);
+    ScopedFile scopedFile(DEFAULT_TIMERFILE, FileMode::Write, SDCARD_SS, 20000000);
     if (!scopedFile.isValid())
     {
         result = "SD Card mount or file open failed";
@@ -294,7 +294,7 @@ bool loadDefaultTimers(String &result)
         return false;
     }
 
-    ScopedFile scopedFile(DEFAULT_TIMERFILE, OPEN_READ, SDCARD_SS, 20000000);
+    ScopedFile scopedFile(DEFAULT_TIMERFILE, FileMode::Read, SDCARD_SS, 20000000);
     if (!scopedFile.isValid())
     {
         result = "SD Card mount or file open failed";
