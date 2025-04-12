@@ -16,9 +16,9 @@ Supported devices for now are M5Stack Grey/Fire and the ESP32-S3-BOX-Lite.<br>Th
 
 ### Hardware needed
 
-- A supported esp32 board. (an sd card slot is required)
-- A led dimming board capable of handling 5 led pwm inputs. (and optionally a i2c temperature sensor)
-- A ds18b20 temperature sensor. (optional)
+- Supported esp32 board. (LovyanGFX support and sd card slot is required)  
+- Led dimming board capable of handling 5 led pwm inputs. (and optionally a i2c temperature sensor)  
+- ds18b20 temperature sensor. (optional)  
 
 ### Upgrading from aquacontrol32
 
@@ -85,8 +85,13 @@ The web interface is not yet completely ready but should be fully functional.
 
 The important urls are:
 
-- `/`<br>Current channel levels and temperature are shown.<br>Click on a level bar to go to the:
-- `/editor`<br>Edit channel timers and save these timers to an SD card.
-- `/moonsetup`<br>Setup full moon levels for the moon simulator.
-- `/fileupload`<br>Upload files to the controller.<br>
-  Uploaded files named `default.aqu` or `default.mnl` will be parsed and if valid light/moon settings are found, these will be applied.
+- `/`  
+Current channel levels and temperature are shown.  
+Click on a level bar to go to the `/editor`.  
+- `/editor`  
+Edit channel timers and save these timers to an SD card.  
+- `/moonsetup`  
+Setup full moon levels for the moon simulator.  
+- `/fileupload`  
+Upload files to the controller.  
+Uploaded files named `default.aqu` or `default.mnl` will be parsed and if valid light/moon settings are found, these will be applied.
