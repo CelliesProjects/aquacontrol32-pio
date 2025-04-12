@@ -61,12 +61,6 @@ static void generateETag(const char *date)
 
 bool loadMoonSettings(String &result)
 {
-    if (!spiMutex)
-    {
-        result = "SPI mutex not initialized";
-        return false;
-    }
-
     ScopedMutex lock(spiMutex, pdMS_TO_TICKS(1000));
     if (!lock.acquired())
     {
@@ -136,12 +130,6 @@ bool loadMoonSettings(String &result)
 
 bool saveMoonSettings(String &result)
 {
-    if (!spiMutex)
-    {
-        result = "SPI mutex not initialized";
-        return false;
-    }
-
     ScopedMutex lock(spiMutex, pdMS_TO_TICKS(1000));
     if (!lock.acquired())
     {

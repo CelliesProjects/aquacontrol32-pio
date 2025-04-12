@@ -232,13 +232,6 @@ static bool parseTimerFile(File &file, String &result)
 
 bool saveDefaultTimers(String &result)
 {
-    if (!spiMutex)
-    {
-        result = "SPI mutex not initialized";
-        log_e("%s", result.c_str());
-        return false;
-    }
-
     ScopedMutex lock(spiMutex, pdMS_TO_TICKS(1000));
     if (!lock.acquired())
     {
@@ -281,12 +274,6 @@ bool saveDefaultTimers(String &result)
 
 bool loadDefaultTimers(String &result)
 {
-    if (!spiMutex)
-    {
-        result = "spi mutex not initialized!";
-        return false;
-    }
-
     ScopedMutex lock(spiMutex, pdMS_TO_TICKS(1000));
     if (!lock.acquired())
     {
