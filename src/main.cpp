@@ -130,9 +130,8 @@ static bool parseTimerFile(File &file, String &result)
 
         String line = file.readStringUntil('\n');
         int currentLine = 1;
-        bool error = false;
 
-        while (file.available() && !error)
+        while (file.available())
         {
             if (line.isEmpty())
             {
