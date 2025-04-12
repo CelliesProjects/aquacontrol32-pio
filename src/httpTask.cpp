@@ -27,7 +27,6 @@ static void addStaticContentHeaders(PsychicResponse &response)
     response.addHeader("ETag", etagValue);
 }
 
-
 static void generateETag(const char *date)
 {
     uint32_t hash = 0;
@@ -52,59 +51,50 @@ bool loadMoonSettings(String &result)
         return false;
     }
 
-    if (!SD.begin(SDCARD_SS))
-    {
-        result = "Failed to initialize SD card";
-        return false;
-    }
-
-    File file = SD.open(MOON_SETTINGS_FILE, FILE_READ);
-    if (!file)
-    {
-        SD.end();
-        result = "Failed to open ";
-        result.concat(MOON_SETTINGS_FILE);
-        result.concat(" for reading");
-        return false;
-    }
-
     std::array<float, NUMBER_OF_CHANNELS> tempLevels;
-
-    for (int i = 0; i < NUMBER_OF_CHANNELS; ++i)
     {
-        String header = file.readStringUntil('\n');
-        String value = file.readStringUntil('\n');
-
-        if (header.isEmpty() || value.isEmpty())
+        ScopedFile scopedFile(MOON_SETTINGS_FILE, OPEN_READ, SDCARD_SS, 20000000);
+        if (!scopedFile.isValid())
         {
-            result = "Unexpected EOF while reading channel ";
-            result.concat(i);
+            result = "SD Card mount or file open failed";
             return false;
         }
 
-        int readIndex = -1;
-        if (sscanf(header.c_str(), "[%d]", &readIndex) != 1 || readIndex != i)
-        {
-            result = "Invalid header format or index mismatch: expected [";
-            result.concat(i);
-            result.concat("], got '");
-            result.concat(header);
-            result.concat("'");
-            return false;
-        }
+        File &file = scopedFile.get();
 
-        float level = value.toFloat();
-        if (!isfinite(level) || level < 0.0f || level > 100.0f)
+        for (int i = 0; i < NUMBER_OF_CHANNELS; ++i)
         {
-            result = "Invalid float value for channel " + String(i) + " '" + String(value) + "' (must be between 0 and 100)";
-            return false;
-        }
+            String header = file.readStringUntil('\n');
+            String value = file.readStringUntil('\n');
 
-        tempLevels[i] = level;
+            if (header.isEmpty() || value.isEmpty())
+            {
+                result = "Unexpected EOF while reading channel ";
+                result.concat(i);
+                return false;
+            }
+
+            int readIndex = -1;
+            if (sscanf(header.c_str(), "[%d]", &readIndex) != 1 || readIndex != i)
+            {
+                result = "Invalid header format or index mismatch: expected [";
+                result.concat(i);
+                result.concat("], got '");
+                result.concat(header);
+                result.concat("'");
+                return false;
+            }
+
+            float level = value.toFloat();
+            if (!isfinite(level) || level < 0.0f || level > 100.0f)
+            {
+                result = "Invalid float value for channel " + String(i) + " '" + String(value) + "' (must be between 0 and 100)";
+                return false;
+            }
+
+            tempLevels[i] = level;
+        }
     }
-
-    file.close();
-    SD.end();
 
     {
         ScopedMutex lock(channelMutex, pdMS_TO_TICKS(1000));
@@ -132,31 +122,24 @@ bool saveMoonSettings(String &result)
     ScopedMutex lock(spiMutex, pdMS_TO_TICKS(1000));
     if (!lock.acquired())
     {
-        result = "Mutex timeout";
+        result = "spiMutex timeout";
         return false;
     }
 
-    if (!SD.begin(SDCARD_SS))
+    ScopedFile scopedFile(MOON_SETTINGS_FILE, OPEN_WRITE, SDCARD_SS, 20000000);
+    if (!scopedFile.isValid())
     {
-        result = "Failed to initialize SD card";
+        result = "SD Card mount or file open failed";
         return false;
     }
 
-    File file = SD.open(MOON_SETTINGS_FILE, FILE_WRITE);
-    if (!file)
-    {
-        SD.end();
-        result = "Failed to open ";
-        result.concat(MOON_SETTINGS_FILE);
-        result.concat(" for writing");
-        return false;
-    }
+    File &file = scopedFile.get();
 
     {
         ScopedMutex lock(channelMutex, pdMS_TO_TICKS(1000));
         if (!lock.acquired())
         {
-            result = "Mutex timeout";
+            result = "channelMutex timeout";
             return false;
         }
 
@@ -166,9 +149,6 @@ bool saveMoonSettings(String &result)
             file.printf("%.6f\n", fullMoonLevel[i]);
         }
     }
-
-    file.close();
-    SD.end();
 
     result = "Saved moon settings to ";
     result.concat(MOON_SETTINGS_FILE);
@@ -230,7 +210,7 @@ time_t time_diff(struct tm *start, struct tm *end)
     return mktime(end) - mktime(start);
 }
 
-static bool handleFileUpload(const String &file, const String &filePath, String &result)
+static bool handleFileUpload(const String &data, const String &filePath, String &result)
 {
     if (!SD.begin(SDCARD_SS))
     {
@@ -246,9 +226,9 @@ static bool handleFileUpload(const String &file, const String &filePath, String 
         return false;
     }
 
-    const size_t fileSize = file.length();
+    const size_t fileSize = data.length();
 
-    if (destFile.write(reinterpret_cast<const uint8_t *>(file.c_str()), fileSize) != fileSize)
+    if (destFile.write(reinterpret_cast<const uint8_t *>(data.c_str()), fileSize) != fileSize)
     {
         destFile.close();
         SD.end();
@@ -373,8 +353,8 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
     );
 
     server.on(
-        "/api/timers", HTTP_POST, [](PsychicRequest *request)
-        {
+              "/api/timers", HTTP_POST, [](PsychicRequest *request)
+              {
             auto validChannel = validateChannel(request);
             if (!validChannel)
                 return ESP_OK;
@@ -441,10 +421,10 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
 
             const bool success = saveDefaultTimers(result);
 
-            return request->reply(success ? 200 : 500, TEXT_PLAIN, result.c_str());
-        }
+            return request->reply(success ? 200 : 500, TEXT_PLAIN, result.c_str()); }
 
-    )->setAuthentication(WEBIF_USER, WEBIF_PASSWORD);
+              )
+        ->setAuthentication(WEBIF_USER, WEBIF_PASSWORD);
 
     server.on(
         "/api/moonlevels", HTTP_GET, [](PsychicRequest *request)
