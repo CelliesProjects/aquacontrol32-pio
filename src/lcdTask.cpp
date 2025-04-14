@@ -135,11 +135,16 @@ static void showTemp(const float temperature)
         }
         temp.setPaletteColor(1, TFT_WHITE);
         temp.setPaletteColor(2, 0x00FF00U);
-        temp.setPaletteColor(3, TFT_GREEN);
+        temp.setPaletteColor(3, TFT_ORANGE);
     }
     temp.clear(3);
     temp.setTextColor(0, 3);
     temp.setTextDatum(CC_DATUM);
+
+    const size_t bgColor = (temperature == -127.0) ? 3 : 2;
+    temp.clear(bgColor);
+    temp.setTextColor(0, bgColor);
+
     if (temperature != -127.0)
     {
         char buffer[10];

@@ -35,5 +35,6 @@ static constexpr int MAX_ERROR_COUNT = 10;
 
 extern QueueHandle_t lcdQueue;
 extern QueueHandle_t websocketQueue;
+extern bool sensorTaskRunning;
 
 #endif

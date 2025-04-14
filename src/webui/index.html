@@ -25,6 +25,11 @@
             width: 100%;
         }
 
+        a {
+            text-decoration: none;
+            color: darkcyan;
+        }
+
         .container {
             display: flex;
             gap: 10px;
@@ -98,7 +103,11 @@
 </head>
 
 <body>
-    <div id="status-line">AQUACONTROL STATUS</div>
+    <div id="status-line">
+        <a href="/moonsetup">MOON SETUP</a> |
+        <a href="#" onclick="startSensorScan(); return false;">SENSOR SCAN</a>
+    </div>
+    <div id="scan-status"></div>
     <div class="container" id="channelContainer">
         <div class="channel">
             <div class="intensity-bar" style="height: 0%;"></div>
@@ -211,6 +220,14 @@
                 ws.close(1000, "Page unloading"); // Cleanly close with a normal closure code
             }
         });
+
+        function startSensorScan() {
+            fetch('/api/scansensor')
+                .then(r => r.text())
+                .then(text => document.getElementById("scan-status").innerText = text)
+                .catch(err => document.getElementById("scan-status").innerText = "Error: " + err);
+        }
+
     </script>
 </body>
 

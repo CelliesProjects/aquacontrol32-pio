@@ -54,6 +54,10 @@ extern std::vector<lightTimer_t> channel[NUMBER_OF_CHANNELS];
 extern SemaphoreHandle_t channelMutex;
 extern float fullMoonLevel[NUMBER_OF_CHANNELS];
 
+TaskHandle_t sensorTaskHandle = nullptr;
+bool sensorTaskRunning = false;
+static SemaphoreHandle_t sensorTaskMutex = xSemaphoreCreateMutex(); // also to setup/ top of file
+
 static void showIPonDisplay()
 {
     lcdMessage_t msg;
@@ -306,6 +310,50 @@ bool loadDefaultTimers(String &result)
     return success;
 }
 
+bool startSensors()
+{
+    ScopedMutex lock(sensorTaskMutex);
+    if (!lock.acquired())
+    {
+        log_e("Failed to acquire mutex in startSensors.");
+        return false;
+    }
+
+    if (sensorTaskHandle == nullptr)
+    {
+        // Task never created — create it
+        const BaseType_t result = xTaskCreate(
+            sensorTask,
+            "sensorTask",
+            4096,
+            NULL,
+            tskIDLE_PRIORITY,
+            &sensorTaskHandle);
+
+        if (result != pdPASS)
+        {
+            log_e("Failed to create sensorTask");
+            sensorTaskHandle = nullptr;
+            return false;
+        }
+
+        log_i("sensorTask created");
+        return true;
+    }
+
+    // If task already exists, resume it if suspended
+    eTaskState state = eTaskGetState(sensorTaskHandle);
+    if (state == eSuspended)
+    {
+        vTaskResume(sensorTaskHandle);
+        log_i("sensorTask resumed");
+        return true;
+    }
+
+    log_v("sensorTask already running (state: %d)", state);
+    return false;
+}
+
 void setup(void)
 {
     Serial.begin(115200);
@@ -315,6 +363,14 @@ void setup(void)
 #endif
 
     log_i("aquacontrol32-pio");
+
+    if (!sensorTaskMutex)
+    {
+        log_e("Failed to create sensorTask Mutex! system halted!");
+        while (1)
+            delay(100);
+    }
+    xSemaphoreGive(sensorTaskMutex);
 
     spiMutex = xSemaphoreCreateMutex();
     if (!spiMutex)
@@ -396,18 +452,7 @@ void setup(void)
             delay(100);
     }
 
-    result = xTaskCreate(sensorTask,
-                         "sensorTask",
-                         4096,
-                         NULL,
-                         tskIDLE_PRIORITY,
-                         NULL);
-    if (result != pdPASS)
-    {
-        log_e("could not start sensorTask. system halted!");
-        while (1)
-            delay(100);
-    }
+    startSensors();
 
     messageOnLcd("Wifi connecting...");
 
