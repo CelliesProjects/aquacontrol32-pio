@@ -43,7 +43,7 @@ void pushSpriteLocked(LGFX_Sprite &sprite, int32_t y)
     if (lock.acquired())
         sprite.pushSprite(0, y);
     else
-        log_w("Failed to acquire SPI mutex for pushSprite()");    
+        log_w("Failed to acquire SPI mutex for pushSprite()");
 }
 
 static void showSystemMessage(char *str)
@@ -166,12 +166,13 @@ void showIP(const char *ip)
         }
         ipAddress.setPaletteColor(1, TFT_WHITE);
         ipAddress.setPaletteColor(2, 0x00FF00U);
-        ipAddress.setPaletteColor(3, TFT_DARKCYAN);
+        ipAddress.setPaletteColor(3, TFT_ORANGE);
     }
     char buffer[16];
-    snprintf(buffer, sizeof(buffer), "%s", ip);
-    ipAddress.clear(3);
-    ipAddress.setTextColor(0, 3);
+    snprintf(buffer, sizeof(buffer), "%s", WiFi.STA.hasIP() ? ip : "NO WIFI");
+    const size_t bgColor = WiFi.STA.hasIP() ? 2 : 3;
+    ipAddress.clear(bgColor);
+    ipAddress.setTextColor(0, bgColor);
     ipAddress.setTextDatum(CC_DATUM);
     ipAddress.drawString(buffer, ipAddress.width() >> 1, 2 + (font.yAdvance >> 1), &font);
 

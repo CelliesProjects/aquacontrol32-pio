@@ -27,6 +27,7 @@ SOFTWARE.
 #include <FS.h>
 #include <SD.h>
 #include <esp_sntp.h>
+#include <NetworkEvents.h>
 #include <freertos/semphr.h>
 #include <vector>
 
@@ -53,6 +54,27 @@ extern std::vector<lightTimer_t> channel[NUMBER_OF_CHANNELS];
 extern SemaphoreHandle_t channelMutex;
 extern float fullMoonLevel[NUMBER_OF_CHANNELS];
 
+static void showIPonDisplay()
+{
+    lcdMessage_t msg;
+    msg.type = SHOW_IP;
+    snprintf(msg.str, sizeof(msg.str), "%s", WiFi.localIP().toString().c_str());
+    xQueueSend(lcdQueue, &msg, portMAX_DELAY);
+}
+
+static void WiFiEvent(arduino_event_id_t event)
+{
+    switch (event)
+    {
+    case ARDUINO_EVENT_WIFI_STA_GOT_IP:
+    case ARDUINO_EVENT_WIFI_STA_LOST_IP:
+        showIPonDisplay();
+        break;
+    default:
+        break;
+    }
+}
+
 static void startDimmerTask()
 {
     static TaskHandle_t dimmerTaskHandle = NULL;
@@ -75,14 +97,6 @@ static void startDimmerTask()
         while (1)
             delay(100);
     }
-}
-
-static void showIPonDisplay()
-{
-    lcdMessage_t msg;
-    msg.type = SHOW_IP;
-    snprintf(msg.str, sizeof(msg.str), "%s", WiFi.localIP().toString().c_str());
-    xQueueSend(lcdQueue, &msg, portMAX_DELAY);
 }
 
 static void ntpCb(void *cb_arg)
@@ -354,6 +368,8 @@ void setup(void)
         log_i("%s", result.c_str());
     }
 
+    WiFi.onEvent(WiFiEvent);
+    WiFi.setAutoReconnect(true);
     WiFi.begin(SSID, PSK);
     WiFi.setSleep(false);
 
