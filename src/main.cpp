@@ -452,7 +452,12 @@ void setup(void)
             delay(100);
     }
 
-    startSensor();
+    if (!startSensor())
+    {
+        log_e("could not start sensorTask. system halted!");
+        while (1)
+            delay(100);        
+    }
 
     messageOnLcd("Wifi connecting...");
 
