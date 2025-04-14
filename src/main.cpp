@@ -54,9 +54,9 @@ extern std::vector<lightTimer_t> channel[NUMBER_OF_CHANNELS];
 extern SemaphoreHandle_t channelMutex;
 extern float fullMoonLevel[NUMBER_OF_CHANNELS];
 
-TaskHandle_t sensorTaskHandle = nullptr;
 bool sensorTaskRunning = false;
-static SemaphoreHandle_t sensorTaskMutex = xSemaphoreCreateMutex(); // also to setup/ top of file
+static TaskHandle_t sensorTaskHandle = nullptr;
+static SemaphoreHandle_t sensorTaskMutex = xSemaphoreCreateMutex();
 
 static void showIPonDisplay()
 {

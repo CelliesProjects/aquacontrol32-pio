@@ -49,11 +49,10 @@ void sensorTask(void *parameter)
     float lastTemperatureC = DEVICE_DISCONNECTED_C;
     int errorCount = 0;
 
+    sensor.begin();
+
     for (;;)
     {
-        log_i("Initializing sensor...");
-        sensor.begin();
-
         DeviceAddress sensorAddress;
         if (!sensor.getAddress(sensorAddress, 0))
         {
