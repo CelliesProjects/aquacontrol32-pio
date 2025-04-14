@@ -574,7 +574,7 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
     server.on(
               "/api/scansensor", HTTP_GET, [](PsychicRequest *request)
               {
-                  const bool success = startSensors();
+                  const bool success = startSensor();
                   return request->reply(success ? 200 : 409, TEXT_PLAIN, success ? "Sensor scan started" : "Sensor already running"); }
 
               )

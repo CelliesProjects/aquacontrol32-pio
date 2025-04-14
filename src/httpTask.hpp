@@ -48,7 +48,7 @@ extern SemaphoreHandle_t spiMutex;
 extern bool saveDefaultTimers(String &result);
 extern bool loadDefaultTimers(String &result);
 extern void messageOnLcd(const char *str);
-extern bool startSensors();
+extern bool startSensor();
 
 QueueHandle_t websocketQueue = xQueueCreate(6, sizeof(websocketMessage));
 

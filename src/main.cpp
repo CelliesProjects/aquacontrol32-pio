@@ -310,12 +310,12 @@ bool loadDefaultTimers(String &result)
     return success;
 }
 
-bool startSensors()
+bool startSensor()
 {
     ScopedMutex lock(sensorTaskMutex);
     if (!lock.acquired())
     {
-        log_e("Failed to acquire mutex in startSensors.");
+        log_e("Failed to acquire sensorTask mutex.");
         return false;
     }
 
@@ -452,7 +452,7 @@ void setup(void)
             delay(100);
     }
 
-    startSensors();
+    startSensor();
 
     messageOnLcd("Wifi connecting...");
 
