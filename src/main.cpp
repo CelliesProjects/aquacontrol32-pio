@@ -313,7 +313,7 @@ bool loadDefaultTimers(String &result)
 bool startSensor()
 {
     ScopedMutex lock(sensorTaskMutex);
-    
+
     if (sensorTaskHandle == nullptr)
     {
         // Task never created — create it
@@ -353,8 +353,8 @@ void setup(void)
 {
     Serial.begin(115200);
 
-#ifdef LGFX_M5STACK
-    pinMode(DAC1, OUTPUT); // prevents high pitched noise on the builtin speaker which is connected to the first DAC
+    #if defined(LGFX_M5STACK) || defined(LGFX_M5STACK_CORE2)
+    dacWrite(DAC1, 0); // prevents high pitched noise on the builtin speaker which is connected to the first DAC
 #endif
 
     log_i("aquacontrol32-pio");
