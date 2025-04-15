@@ -54,6 +54,10 @@ extern std::vector<lightTimer_t> channel[NUMBER_OF_CHANNELS];
 extern SemaphoreHandle_t channelMutex;
 extern float fullMoonLevel[NUMBER_OF_CHANNELS];
 
+bool sensorTaskRunning = false;
+static TaskHandle_t sensorTaskHandle = nullptr;
+static SemaphoreHandle_t sensorTaskMutex = xSemaphoreCreateMutex();
+
 static void showIPonDisplay()
 {
     lcdMessage_t msg;
@@ -306,15 +310,62 @@ bool loadDefaultTimers(String &result)
     return success;
 }
 
+bool startSensor()
+{
+    ScopedMutex lock(sensorTaskMutex);
+
+    if (sensorTaskHandle == nullptr)
+    {
+        // Task never created — create it
+        const BaseType_t result = xTaskCreate(
+            sensorTask,
+            "sensorTask",
+            4096,
+            NULL,
+            tskIDLE_PRIORITY,
+            &sensorTaskHandle);
+
+        if (result != pdPASS)
+        {
+            log_e("Failed to create sensorTask");
+            sensorTaskHandle = nullptr;
+            return false;
+        }
+
+        log_i("sensorTask created");
+        return true;
+    }
+
+    // If task already exists, resume it if suspended
+    eTaskState state = eTaskGetState(sensorTaskHandle);
+    if (state == eSuspended)
+    {
+        vTaskResume(sensorTaskHandle);
+        log_i("sensorTask resumed");
+        return true;
+    }
+
+    log_v("sensorTask already running (state: %d)", state);
+    return false;
+}
+
 void setup(void)
 {
     Serial.begin(115200);
 
-#ifdef LGFX_M5STACK
-    pinMode(DAC1, OUTPUT); // prevents high pitched noise on the builtin speaker which is connected to the first DAC
+    #if defined(LGFX_M5STACK) || defined(LGFX_M5STACK_CORE2)
+    dacWrite(DAC1, 0); // prevents high pitched noise on the builtin speaker which is connected to the first DAC
 #endif
 
     log_i("aquacontrol32-pio");
+
+    if (!sensorTaskMutex)
+    {
+        log_e("Failed to create sensorTask Mutex! system halted!");
+        while (1)
+            delay(100);
+    }
+    xSemaphoreGive(sensorTaskMutex);
 
     spiMutex = xSemaphoreCreateMutex();
     if (!spiMutex)
@@ -396,13 +447,7 @@ void setup(void)
             delay(100);
     }
 
-    result = xTaskCreate(sensorTask,
-                         "sensorTask",
-                         4096,
-                         NULL,
-                         tskIDLE_PRIORITY,
-                         NULL);
-    if (result != pdPASS)
+    if (!startSensor())
     {
         log_e("could not start sensorTask. system halted!");
         while (1)

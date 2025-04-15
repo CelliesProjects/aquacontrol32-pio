@@ -34,6 +34,7 @@
         #channelButtons button {
             margin: 5px;
             padding: 5px 15px;
+            font-size: large;
         }
 
         canvas {
@@ -105,7 +106,7 @@
     let currentChannel = 0;
 
     const uploadTimers = (channel) => {
-        if (!confirm("Click on 'OK' to instantly set and overwrite\nthe current set timers for this channel.\n\nDo you want to proceed?"))
+        if (!confirm("Clicking on 'OK' will overwrite\nthe current set timers for this channel.\n\nDo you want to proceed?"))
             return;
 
         let csvData = '';

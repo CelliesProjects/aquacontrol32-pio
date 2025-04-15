@@ -46,51 +46,56 @@ void sensorTask(void *parameter)
     OneWire oneWire(ONE_WIRE_PIN);
     DallasTemperature sensor(&oneWire);
 
-    sensor.begin();
-
-    DeviceAddress sensorAddress;
-    if (!sensor.getAddress(sensorAddress, 0))
-    {
-        updateDisplay(DEVICE_DISCONNECTED_C);
-        log_i("No DS18B20 sensor found. Deleting task.");
-        vTaskDelete(NULL);
-    }
-    sensor.setResolution(sensorAddress, 12);
-
     float lastTemperatureC = DEVICE_DISCONNECTED_C;
     int errorCount = 0;
 
-    while (1)
+    sensor.begin();
+
+    for (;;)
     {
-        sensor.requestTemperatures();
-
-        vTaskDelay(pdMS_TO_TICKS(750));
-
-        const float temperatureC = sensor.getTempC(sensorAddress);
-
-        if (temperatureC == DEVICE_DISCONNECTED_C)
+        DeviceAddress sensorAddress;
+        if (!sensor.getAddress(sensorAddress, 0))
         {
-            log_w("Sensor disconnected or error reading temperature.");
-
-            if (++errorCount >= MAX_ERROR_COUNT)
-            {
-                updateDisplay(DEVICE_DISCONNECTED_C);
-                updateWebsocket(DEVICE_DISCONNECTED_C);
-
-                log_e("Persistent sensor error after %d retries. Deleting task.", MAX_ERROR_COUNT);
-
-                vTaskDelete(NULL);
-            }
+            updateDisplay(DEVICE_DISCONNECTED_C);
+            log_i("No DS18B20 sensor found. Suspending task.");
+            vTaskSuspend(NULL);
+            continue; // retry on resume
         }
-        else
-        {
-            errorCount = 0;
 
-            if (fabs(temperatureC - lastTemperatureC) > TEMPERATURE_THRESHOLD)
+        sensor.setResolution(sensorAddress, 12);
+        errorCount = 0;
+
+        while (1)
+        {
+            sensor.requestTemperatures();
+            vTaskDelay(pdMS_TO_TICKS(750));
+
+            float temperatureC = sensor.getTempC(sensorAddress);
+
+            if (temperatureC == DEVICE_DISCONNECTED_C)
             {
-                updateDisplay(temperatureC);
-                updateWebsocket(temperatureC);
-                lastTemperatureC = temperatureC;
+                log_w("Sensor disconnected or error reading temperature.");
+
+                if (++errorCount >= MAX_ERROR_COUNT)
+                {
+                    updateDisplay(DEVICE_DISCONNECTED_C);
+                    updateWebsocket(DEVICE_DISCONNECTED_C);
+
+                    log_e("Persistent sensor error. Suspending task.");
+                    vTaskSuspend(NULL);
+                    break; // break inner loop to re-init on resume
+                }
+            }
+            else
+            {
+                errorCount = 0;
+
+                if (fabs(temperatureC - lastTemperatureC) > TEMPERATURE_THRESHOLD)
+                {
+                    updateDisplay(temperatureC);
+                    updateWebsocket(temperatureC);
+                    lastTemperatureC = temperatureC;
+                }
             }
         }
     }

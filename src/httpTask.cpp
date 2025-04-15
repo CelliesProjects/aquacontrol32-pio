@@ -223,7 +223,6 @@ time_t time_diff(struct tm *start, struct tm *end)
 
 static bool handleFileUpload(const String &data, const String &filePath, String &result)
 {
-    
     ScopedFile scopedFile(filePath, FileMode::Write, SDCARD_SS, 20000000);
     if (!scopedFile.isValid())
     {
@@ -571,6 +570,15 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
             return request->reply(200, TEXT_PLAIN, uptimeString.c_str()); }
 
     );
+
+    server.on(
+              "/api/scansensor", HTTP_GET, [](PsychicRequest *request)
+              {
+                  const bool success = startSensor();
+                  return request->reply(success ? 200 : 409, TEXT_PLAIN, success ? "Sensor scan started" : "Sensor already running"); }
+
+              )
+        ->setAuthentication(WEBIF_USER, WEBIF_PASSWORD);
 
 #if defined(CORE_DEBUG_LEVEL) && (CORE_DEBUG_LEVEL >= 4)
     server.on(
