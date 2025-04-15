@@ -18,8 +18,15 @@
             align-items: center;
             justify-content: center;
             height: 100vh;
-            max-height: 600px;
             width: 100%;
+        }
+
+        .main-container {
+            width: 80%;
+            max-width: 600px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
         .slider-container {
@@ -28,6 +35,10 @@
             gap: 20px;
             flex-wrap: wrap;
             padding: 10px;
+            height: 80vh;
+            /* Set the height of the slider container */
+            align-items: center;
+            /* Vertically align items in the center */
         }
 
         .slider-box {
@@ -35,13 +46,16 @@
             flex-direction: column;
             align-items: center;
             width: 80px;
+            height: auto;
+            /* Adjust height to fit content */
         }
 
         input[type="range"] {
             writing-mode: bt-lr;
             transform: rotate(270deg);
             margin: 0;
-            height: 120px;
+            width: calc(80vh * 0.8);
+            /* 80% of the slider container height */
         }
 
         button {
@@ -58,22 +72,34 @@
 </head>
 
 <body>
-    <div>SET FULL MOON LIGHT AMOUNT</div>
-    <div class="slider-container">
-        <div class="slider-box" id="slider0"><input type="range" min="0" max="1" step="0.01" value="0"
-                id="s0"><span>0%</span></div>
-        <div class="slider-box" id="slider1"><input type="range" min="0" max="1" step="0.01" value="0"
-                id="s1"><span>0%</span></div>
-        <div class="slider-box" id="slider2"><input type="range" min="0" max="1" step="0.01" value="0"
-                id="s2"><span>0%</span></div>
-        <div class="slider-box" id="slider3"><input type="range" min="0" max="1" step="0.01" value="0"
-                id="s3"><span>0%</span></div>
-        <div class="slider-box" id="slider4"><input type="range" min="0" max="1" step="0.01" value="0"
-                id="s4"><span>0%</span></div>
-    </div>
-    <div>
-        <button onclick="applySettings()">Write to SD card</button>
-        <button onclick="window.location = '/'">To the index</button>
+    <div class="main-container">
+        <div>SET FULL MOON LIGHT AMOUNT</div>
+        <div class="slider-container">
+            <div class="slider-box" id="slider0">
+                <input type="range" min="0" max="1" step="0.01" value="0" id="s0">
+                <p>0%</p>
+            </div>
+            <div class="slider-box" id="slider1">
+                <input type="range" min="0" max="1" step="0.01" value="0" id="s1">
+                <p>0%</p>
+            </div>
+            <div class="slider-box" id="slider2">
+                <input type="range" min="0" max="1" step="0.01" value="0" id="s2">
+                <p>0%</p>
+            </div>
+            <div class="slider-box" id="slider3">
+                <input type="range" min="0" max="1" step="0.01" value="0" id="s3">
+                <p>0%</p>
+            </div>
+            <div class="slider-box" id="slider4">
+                <input type="range" min="0" max="1" step="0.01" value="0" id="s4">
+                <p>0%</p>
+            </div>
+        </div>
+        <div>
+            <button onclick="applySettings()">Write to SD card</button>
+            <button onclick="window.location = '/'">To the index</button>
+        </div>
     </div>
     <script>
         const sliders = document.querySelectorAll('input[type="range"]');
@@ -86,7 +112,7 @@
                 const values = text.split(',').map(Number);
                 sliders.forEach((slider, i) => {
                     slider.value = values[i];
-                    spans[i].textContent = (values[i]) + '%';
+                    spans[i].textContent = (values[i] * 100) + '%';
                 });
             } catch (error) {
                 console.error('Error fetching moon levels:', error);
@@ -94,7 +120,7 @@
         }
 
         function updateValue(event, index) {
-            spans[index].textContent = (event.target.value) + '%';
+            spans[index].textContent = (event.target.value * 100) + '%';
         }
 
         function applySettings() {
