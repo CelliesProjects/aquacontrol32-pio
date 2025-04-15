@@ -353,8 +353,9 @@ void setup(void)
 {
     Serial.begin(115200);
 
-    #if defined(LGFX_M5STACK) || defined(LGFX_M5STACK_CORE2)
-    dacWrite(DAC1, 0); // prevents high pitched noise on the builtin speaker which is connected to the first DAC
+#if defined(LGFX_M5STACK) || defined(LGFX_M5STACK_CORE2)
+    pinMode(DAC1, OUTPUT);
+    digitalWrite(DAC1, LOW); // prevents high pitched noise on the builtin speaker which is connected to the first DAC
 #endif
 
     log_i("aquacontrol32-pio");
