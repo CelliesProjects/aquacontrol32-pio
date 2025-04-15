@@ -8,7 +8,11 @@
     <style>
         body {
             font-family: Arial, sans-serif;
+            font-weight: bold;
             text-align: center;
+            margin: 2px;
+            background-color: black;
+            color: darkcyan;
         }
 
         #drop-area {
@@ -41,17 +45,26 @@
             margin-top: 10px;
             font-weight: bold;
         }
+
+        button {
+            margin: 5px;
+            padding: 5px 15px;
+            font-size: large;
+        }        
     </style>
 </head>
 
 <body>
-    <h2>Upload a File</h2>
+    <h3>Upload a File</h3>
     <div id="drop-area">Drop file here or click to select</div>
     <input type="file" id="file-input" style="display: none;" />
     <div id="progress-container">
         <div id="progress-bar"></div>
     </div>
     <p id="status"></p>
+    <div class="container" id="button-container">
+        <button onclick="window.location = '/'">To the index</button>
+    </div>
 
     <script>
         const dropArea = document.getElementById("drop-area");
