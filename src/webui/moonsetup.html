@@ -17,7 +17,6 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh;
             width: 100%;
         }
 
@@ -37,9 +36,7 @@
             flex-wrap: wrap;
             padding: 0px;
             height: 80vh;
-            /* Set the height of the slider container */
             align-items: center;
-            /* Vertically align items in the center */
         }
 
         .slider-box {
@@ -48,7 +45,6 @@
             align-items: center;
             width: 80px;
             height: auto;
-            /* Adjust height to fit content */
         }
 
         input[type="range"] {
@@ -56,7 +52,6 @@
             transform: rotate(270deg);
             margin: 0;
             width: calc(80vh * 0.8);
-            /* 80% of the slider container height */
         }
 
         button {
@@ -71,12 +66,15 @@
             position: relative;
             top: calc(65vh * -0.5);
         }
+        #title {
+            margin: 2px;
+        }
     </style>
 </head>
 
 <body>
     <div class="main-container">
-        <div>SET FULL MOON LIGHT AMOUNT</div>
+        <div id="title">SET FULL MOON LIGHT AMOUNT</div>
         <div class="slider-container">
             <div class="slider-box" id="slider0">
                 <span>0%</span>
