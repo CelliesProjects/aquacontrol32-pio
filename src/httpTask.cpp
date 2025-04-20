@@ -79,6 +79,8 @@ bool loadMoonSettings(String &result)
 
         File &file = scopedFile.get();
 
+        log_i("parsing '%s'", file.path());
+
         for (int i = 0; i < NUMBER_OF_CHANNELS; ++i)
         {
             String header = file.readStringUntil('\n');
