@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AquaControl timer editor</title>
+    <title>TIMER EDITOR</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -25,13 +25,18 @@
 
         #actionButtons,
         #channelButtons {
-            width: 100%;
+            display: flex;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            white-space: nowrap;
             background-color: cornflowerblue;
-            min-width: 600px;
+            padding: 5px;
+            scrollbar-width: thin;
         }
 
         #actionButtons button,
         #channelButtons button {
+            flex: 0 0 auto;
             margin: 5px;
             padding: 5px 15px;
             font-size: large;
