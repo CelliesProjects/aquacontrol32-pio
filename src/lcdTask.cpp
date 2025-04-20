@@ -48,7 +48,7 @@ void pushSpriteLocked(LGFX_Sprite &sprite, int32_t y)
 
 static void showSystemMessage(char *str)
 {
-    const GFXfont &font = lgfx::fonts::DejaVu18;
+    const GFXfont &font = DejaVu18;
     static LGFX_Sprite sysMess(&lcd);
 
     if (sysMess.width() == 0 || sysMess.height() == 0)
@@ -78,10 +78,9 @@ static void showSystemMessage(char *str)
 
 static void updateLights()
 {
+    const GFXfont &font = DejaVu12;
     constexpr int yPos = 60;
     static LGFX_Sprite lightBars(&lcd);
-
-    const GFXfont &font = lgfx::fonts::DejaVu12;
 
     if (lightBars.width() == 0 || lightBars.height() == 0)
     {
