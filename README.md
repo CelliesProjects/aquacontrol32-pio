@@ -1,16 +1,17 @@
 # AQUACONTROL32-PIO
 
-## What is this?
-
 This is a led control app aimed at aquarium use. With this app you can program gradual sunrises and sunsets on 5 led channels through a web interface. The moon phase cycle is simulated and can be adjusted from the web interface. All settings are saved to an sd card.
 
-Besides a led dimming board, you need a supported device and Visual Studio Code plus PlatformIO installed to compile and upload this app.
+To use this project you need a led dimming board, a supported device and Visual Studio Code plus PlatformIO installed to compile and upload this app.  
 
-Supported devices for now are M5Stack Grey/Fire and the ESP32-S3-BOX-Lite.<br>The display driver is LovyanGFX so porting to a new device should be pretty easy and some more devices will be supported.
+![image-aquaboard2](https://github.com/user-attachments/assets/30b79d2d-9873-4528-86e6-4fe226557873)
+
+Supported devices are M5Stack Grey/Fire and the ESP32-S3-BOX-Lite.
 
 ## Editor screenshot
 
-![editor](https://github.com/user-attachments/assets/65d36678-d3d9-4f20-9c3a-0ab2893e1b3b)
+Edit the channels through the built-in web interface.  
+![editor](https://github.com/user-attachments/assets/65d36678-d3d9-4f20-9c3a-0ab2893e1b3b)  
 
 ## How to setup this app
 
@@ -69,29 +70,28 @@ Adjust the values as needed.
 
 ## 4. Make sure you have a FAT32 formatted SD card inserted
 
-Timers are saved on the SD card as `default.aqu`.
-
-Moonlight setup is saved on the SD card as `default.mnl`.
+- Timers are saved on the SD card as `default.aqu`.
+- Moonlight setup is saved on the SD card as `default.mnl`.
 
 Without SD card the app will seem to work but saving timers or moonlight settings is not possible.
 
 ## 5. Upload app and start editing
 
-Select the PIO icon on the left, then open `Project Tasks`. Click on your device to expand the menu and there select `Upload and Monitor`.
+Select the PIO icon on the left, then open `Project Tasks`.  
+Click on your device to expand the menu and there select `Upload and Monitor`.
 
-After uploading, the IP address of the webinterface is shown on the display.<br>Browse to this IP, then click on a channel bar and start editing timers.
+After uploading, the IP address of the webinterface is shown on the display.  
+Browse to this IP, then click on a channel bar and start editing timers.
 
-The web interface is not yet completely ready but should be fully functional.
+## URLs on the device
 
-The important urls are:
-
-- `/`  
+- **`/`**  
 Current channel levels and temperature are shown.  
-Click on a level bar to go to the `/editor`.  
-- `/editor`  
+Click on a level bar to go to the **`/editor`**.  
+- **`/editor`**  
 Edit channel timers and save these timers to an SD card.  
-- `/moonsetup`  
+- **`/moonsetup`**  
 Setup full moon levels for the moon simulator.  
-- `/fileupload`  
+- **`/fileupload`**  
 Upload files to the controller.  
-Uploaded files named `default.aqu` or `default.mnl` will be parsed and if valid light/moon settings are found, these will be applied.
+Uploaded files named `default.aqu` or `default.mnl` will be parsed and if valid light or moon settings are found, these will be applied directly after upload.
