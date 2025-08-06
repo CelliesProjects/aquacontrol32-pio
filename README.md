@@ -9,7 +9,7 @@ Supported devices are M5Stack Grey/Fire and the ESP32-S3-BOX-Lite.
 ![M5Stack grey LED dimming board with 2A LED channels and sensor connector](https://github.com/user-attachments/assets/30b79d2d-9873-4528-86e6-4fe226557873)  
 M5Stack grey LED dimming board with 2A LED channels and sensor connector
 
-### Edit channels with the web interface.
+## Edit channels with the web interface
 
 ![editor](https://github.com/user-attachments/assets/65d36678-d3d9-4f20-9c3a-0ab2893e1b3b)
 
