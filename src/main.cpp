@@ -386,13 +386,6 @@ void setup(void)
     }
     xSemaphoreGive(channelMutex);
 
-    if (!lcdQueue)
-    {
-        log_e("no lcd queue. system halted!");
-        while (1)
-            delay(100);
-    }
-
     for (int ch = 0; ch < NUMBER_OF_CHANNELS; ch++)
     {
         channel[ch].push_back({0, 0});
@@ -432,6 +425,14 @@ void setup(void)
             delay(100);
     }
 
+#ifndef HEADLESS_BUILD
+    if (!lcdQueue)
+    {
+        log_e("no lcd queue. system halted!");
+        while (1)
+            delay(100);
+    }
+    
     showIPonDisplay();
 
     BaseType_t result = xTaskCreatePinnedToCore(lcdTask,
@@ -456,13 +457,15 @@ void setup(void)
     }
 
     messageOnLcd("Wifi connecting...");
+#endif
 
     while (!WiFi.isConnected())
         delay(10);
 
+#ifndef HEADLESS_BUILD
     showIPonDisplay();
-
     messageOnLcd("Syncing clock...");
+#endif
 
     log_i("syncing NTP");
     sntp_set_time_sync_notification_cb((sntp_sync_time_cb_t)ntpCb);

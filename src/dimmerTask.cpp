@@ -143,6 +143,7 @@ void dimmerTask(void *parameter)
             lastWebsocketRefresh = millis();
         }
 
+#ifndef HEADLESS_BUILD
         constexpr int REFRESHRATE_LCD_HZ = 5;
         constexpr int LCD_WAIT_TIME = 1000 / REFRESHRATE_LCD_HZ;
         static unsigned long lastLcdRefresh = 0;
@@ -153,6 +154,7 @@ void dimmerTask(void *parameter)
             xQueueSend(lcdQueue, &msg, portMAX_DELAY);
             lastLcdRefresh = millis();
         }
+#endif
 
 #if defined(CORE_DEBUG_LEVEL) && (CORE_DEBUG_LEVEL >= 4)
         static int lps = 0;

@@ -576,6 +576,9 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
     server.on(
               "/api/scansensor", HTTP_GET, [](PsychicRequest *request)
               {
+#ifdef HEADLESS_BUILD
+                  return request->reply(501, TEXT_PLAIN, "Sensor not supported in headless build");
+#endif         
                   const bool success = startSensor();
                   return request->reply(success ? 200 : 409, TEXT_PLAIN, success ? "Sensor scan started" : "Sensor already running"); }
 
