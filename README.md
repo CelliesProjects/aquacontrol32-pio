@@ -4,7 +4,8 @@ This is a LED control app aimed at aquarium use. With this app you can program g
 
 To use this project you need a esp32 module, a LED dimming board and you will need [VSCode](https://code.visualstudio.com/) with the [PlatformIO](https://platformio.org/) plugin installed.
 
-Supported devices are all esp32 devices with an sd card slot plus M5Stack Grey/Fire and the ESP32-S3-BOX-Lite.
+Supported devices are all esp32 devices with an sd card slot.  
+Predefined configs are included for M5Stack Grey/Fire and the ESP32-S3-BOX-Lite.
 
 ![M5Stack grey LED dimming board with 2A LED channels and sensor connector](https://github.com/user-attachments/assets/30b79d2d-9873-4528-86e6-4fe226557873)  
 M5Stack grey LED dimming board with 2A LED channels and sensor connector
@@ -13,7 +14,7 @@ M5Stack grey LED dimming board with 2A LED channels and sensor connector
 
 ![editor](https://github.com/user-attachments/assets/65d36678-d3d9-4f20-9c3a-0ab2893e1b3b)
 
-- Add timers by clicking on the grid
+- Add timers by click-dragging on the grid
 - To adjust timers drag and drop a timer handle to another location
 - The first timer can not be deleted but the intensity can be set
 - No touch handlers are defined so it will not work on a touch device
@@ -55,7 +56,7 @@ In the same file, you can adjust the gpio pins in the `[env:headless]` section b
     -D LEDPIN_4=xx
 ```
 
-Note: The ds18b20 temperature sensoris not supported in the headless build.
+Note: The ds18b20 temperature sensor is not supported in the headless build.
 
 ### 3 - Setup your WiFi secrets in `src/secrets.h`
 
