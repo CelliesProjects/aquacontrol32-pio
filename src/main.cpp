@@ -413,6 +413,9 @@ void setup(void)
         log_i("%s", result.c_str());
     }
 
+    if (SET_STATIC_IP && !WiFi.config(STATIC_IP, GATEWAY, SUBNET, PRIMARY_DNS))
+        log_i("Setting static IP failed");
+
     WiFi.onEvent(WiFiEvent);
     WiFi.setAutoReconnect(true);
     WiFi.begin(SSID, PSK);
@@ -432,7 +435,7 @@ void setup(void)
         while (1)
             delay(100);
     }
-    
+
     showIPonDisplay();
 
     BaseType_t result = xTaskCreatePinnedToCore(lcdTask,
