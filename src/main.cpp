@@ -416,6 +416,7 @@ void setup(void)
     if (SET_STATIC_IP && !WiFi.config(STATIC_IP, GATEWAY, SUBNET, PRIMARY_DNS))
         log_i("Setting static IP failed");
 
+    btStop();
     WiFi.onEvent(WiFiEvent);
     WiFi.setAutoReconnect(true);
     WiFi.begin(SSID, PSK);
