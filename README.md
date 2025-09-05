@@ -84,7 +84,8 @@ Adjust the values as needed.
 **You can skip this step when flashing your device.**  
 With WiFi secrets on the SD card you dont need to reflash your device if you ever want or need to change the wifi settings at some point.  
 Just create or update `default.net` and reboot.  
-Here is how:
+
+**First method - you can not access 'old' WiFi network**
 
 Create a file named `default.net` with the secrets for the WiFi network: 
 
@@ -93,9 +94,14 @@ SSID=wifi network
 PSK=wifi password
 ```
 
-Save this file on the SD card.  
-Insert the SD card in the aquarium controller.  
-Reboot.  
+1. Save this file on the SD card.  
+2. Insert the SD card in the aquarium controller.  
+3. Reboot.  
+
+**Second method - you can still accesss 'old' network**
+
+1. Upload `default.net` as described above to the controller through the `/fileupload` page.  
+2. Reboot.
 
 **Note**: Settings found on the SD card override the compiled in settings. 
 
