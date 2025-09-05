@@ -482,23 +482,24 @@ void setup(void)
     }
 
     btStop();
-    WiFisecrets secrets;
-    String msg;
 
     WiFi.onEvent(WiFiEvent);
     WiFi.setAutoReconnect(true);
 
-    if (loadSecretsFromSD(msg, secrets))
+    WiFisecrets secrets;
+    String error;
+    if (loadSecretsFromSD(error, secrets))
     {
-        log_i("Using WiFi credentials from sdcard for %s", secrets.ssid.c_str());
+        log_i("Using WiFi secrets from sdcard for %s", secrets.ssid.c_str());
         WiFi.begin(secrets.ssid.c_str(), secrets.psk.c_str());
     }
     else
     {
+        log_i("Reading WiFi secrets from sdcard failed: %s", error.c_str());
         if (SET_STATIC_IP && !WiFi.config(STATIC_IP, GATEWAY, SUBNET, PRIMARY_DNS))
             log_w("Setting static IP failed");
-            
-        log_i("Using compiled in WiFi credentials for %s", SSID);
+
+        log_i("Using compiled in WiFi secrets for %s", SSID);
         WiFi.begin(SSID, PSK);
     }
 
