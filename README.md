@@ -79,20 +79,25 @@ const char *WEBIF_PASSWORD = "admin";
 
 Adjust the values as needed.
 
-### 4 - Setup (override) your WiFi secrets with an sdcard
+### 4 - Setup (override) your WiFi secrets with the SD card
 
-Create a file named `default.net` with the secrets for the desired network. 
+You can skip this step if you first flash your device.  
+With WiFi secrets on the SD card you dont need to reflash your device if you ever want or need to change the wifi settings at some point later on.  
+Just create or update `default.net` and reboot.  
+Here is how:
+
+Create a file named `default.net` with the secrets for the WiFi network: 
 
 ```bash
 SSID=wifi network
 PSK=wifi password
 ```
 
-Save on the sdcard.  
-Insert sdcard in the aquarium controller.  
-Reboot.
+Save this file on the SD card.  
+Insert the SD card in the aquarium controller.  
+Reboot.  
 
-**Note**: Settings found on the sdcard override the compiled in settings. 
+**Note**: Settings found on the SD card override the compiled in settings. 
 
 ### 5 - Make sure you have a FAT32 formatted SD card inserted
 
@@ -102,7 +107,7 @@ Reboot.
 Without SD card the app will seem to work but saving timers or moonlight settings is not possible.  
 Uploaded timers will be gone on a reboot without a SD card.
 
-### 6 Upload app and start editing
+### 6 - Upload app and start editing
 
 Select the PIO icon on the left, then open `Project Tasks`.  
 Click on your device to expand the menu and there select `Upload and Monitor`.
