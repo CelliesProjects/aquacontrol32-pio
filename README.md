@@ -81,8 +81,8 @@ Adjust the values as needed.
 
 ### 4 - Setup (override) your WiFi secrets with the SD card
 
-You can skip this step if you first flash your device.  
-With WiFi secrets on the SD card you dont need to reflash your device if you ever want or need to change the wifi settings at some point later on.  
+**You can skip this step when flashing your device.**  
+With WiFi secrets on the SD card you dont need to reflash your device if you ever want or need to change the wifi settings at some point.  
 Just create or update `default.net` and reboot.  
 Here is how:
 
