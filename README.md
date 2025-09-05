@@ -89,7 +89,7 @@ PSK=wifi password
 ```
 
 Save on the sdcard.  
-Insert sdcard in the aquarium controller.
+Insert sdcard in the aquarium controller.  
 Reboot.
 
 **Note**: Settings found on the sdcard override the compiled in settings. 
