@@ -146,7 +146,6 @@ bool parseWiFisecrets(File &file, String &result, WiFisecrets &secrets)
         return false;
     }
 
-    result = "WiFi secrets loaded";
     return true;
 }
 
