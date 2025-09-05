@@ -105,15 +105,15 @@ static void startDimmerTask()
     }
 }
 
-struct WiFiCreds
+struct WiFisecrets
 {
     String ssid;
     String psk;
 };
 
-bool parseWiFiCreds(File &file, String &result, WiFiCreds &creds)
+bool parseWiFisecrets(File &file, String &result, WiFisecrets &secrets)
 {
-    creds = {};
+    secrets = {};
     while (file.available())
     {
         String line = file.readStringUntil('\n');
@@ -124,7 +124,7 @@ bool parseWiFiCreds(File &file, String &result, WiFiCreds &creds)
         int sep = line.indexOf('=');
         if (sep == -1)
         {
-            result = "Invalid line in WiFi creds file: " + line;
+            result = "Invalid line in WiFi secrets file: " + line;
             return false;
         }
 
@@ -134,23 +134,23 @@ bool parseWiFiCreds(File &file, String &result, WiFiCreds &creds)
         value.trim();
 
         if (key.equalsIgnoreCase("SSID"))
-            creds.ssid = value;
+            secrets.ssid = value;
 
         else if (key.equalsIgnoreCase("PSK"))
-            creds.psk = value;
+            secrets.psk = value;
     }
 
-    if (creds.ssid.isEmpty() || creds.psk.isEmpty())
+    if (secrets.ssid.isEmpty() || secrets.psk.isEmpty())
     {
-        result = "Missing SSID or PSK in WiFi creds file";
+        result = "Missing SSID or PSK in WiFi secrets file";
         return false;
     }
 
-    result = "WiFi credentials loaded";
+    result = "WiFi secrets loaded";
     return true;
 }
 
-bool loadWiFiCreds(String &result, WiFiCreds &creds)
+bool loadSecretsFromSD(String &result, WiFisecrets &secrets)
 {
     ScopedMutex lock(spiMutex, pdMS_TO_TICKS(1000));
     if (!lock.acquired())
@@ -167,7 +167,7 @@ bool loadWiFiCreds(String &result, WiFiCreds &creds)
     }
 
     File &file = scopedFile.get();
-    const bool success = parseWiFiCreds(file, result, creds);
+    const bool success = parseWiFisecrets(file, result, secrets);
     return success;
 }
 
@@ -482,16 +482,16 @@ void setup(void)
     }
 
     btStop();
-    WiFiCreds creds;
+    WiFisecrets secrets;
     String msg;
 
     WiFi.onEvent(WiFiEvent);
     WiFi.setAutoReconnect(true);
 
-    if (loadWiFiCreds(msg, creds))
+    if (loadSecretsFromSD(msg, secrets))
     {
-        log_i("Using WiFi credentials from sdcard for %s", creds.ssid.c_str());
-        WiFi.begin(creds.ssid.c_str(), creds.psk.c_str());
+        log_i("Using WiFi credentials from sdcard for %s", secrets.ssid.c_str());
+        WiFi.begin(secrets.ssid.c_str(), secrets.psk.c_str());
     }
     else
     {
