@@ -79,7 +79,7 @@ const char *WEBIF_PASSWORD = "admin";
 
 Adjust the values as needed.
 
-### 3 - Setup your WiFi secrets with an sdcard
+### 4 - Setup (override) your WiFi secrets with an sdcard
 
 Create a file named `default.net` with the secrets for the desired network. 
 
