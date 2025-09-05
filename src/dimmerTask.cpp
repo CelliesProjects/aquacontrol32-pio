@@ -139,7 +139,7 @@ void dimmerTask(void *parameter)
                      currentPercentage[2],
                      currentPercentage[3],
                      currentPercentage[4]);
-            xQueueSend(websocketQueue, &msg, portMAX_DELAY);
+            xQueueSend(websocketQueue, &msg, 0);
             lastWebsocketRefresh = millis();
         }
 
@@ -151,7 +151,7 @@ void dimmerTask(void *parameter)
         {
             lcdMessage_t msg;
             msg.type = lcdMessageType::UPDATE_LIGHTS;
-            xQueueSend(lcdQueue, &msg, portMAX_DELAY);
+            xQueueSend(lcdQueue, &msg, 0);
             lastLcdRefresh = millis();
         }
 #endif
