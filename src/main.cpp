@@ -58,6 +58,8 @@ bool sensorTaskRunning = false;
 static TaskHandle_t sensorTaskHandle = nullptr;
 static SemaphoreHandle_t sensorTaskMutex = xSemaphoreCreateMutex();
 
+constexpr const char *DEFAULT_NETFILE = "/default.net";
+
 static void showIPonDisplay()
 {
     lcdMessage_t msg;
@@ -101,6 +103,72 @@ static void startDimmerTask()
         while (1)
             delay(100);
     }
+}
+
+struct WiFiCreds
+{
+    String ssid;
+    String psk;
+};
+
+bool parseWiFiCreds(File &file, String &result, WiFiCreds &creds)
+{
+    creds = {};
+    while (file.available())
+    {
+        String line = file.readStringUntil('\n');
+        line.trim();
+        if (line.isEmpty() || line.startsWith("#")) // skip blanks/comments
+            continue;
+
+        int sep = line.indexOf('=');
+        if (sep == -1)
+        {
+            result = "Invalid line in WiFi creds file: " + line;
+            return false;
+        }
+
+        String key = line.substring(0, sep);
+        String value = line.substring(sep + 1);
+        key.trim();
+        value.trim();
+
+        if (key.equalsIgnoreCase("SSID"))
+            creds.ssid = value;
+
+        else if (key.equalsIgnoreCase("PSK"))
+            creds.psk = value;
+    }
+
+    if (creds.ssid.isEmpty() || creds.psk.isEmpty())
+    {
+        result = "Missing SSID or PSK in WiFi creds file";
+        return false;
+    }
+
+    result = "WiFi credentials loaded";
+    return true;
+}
+
+bool loadWiFiCreds(String &result, WiFiCreds &creds)
+{
+    ScopedMutex lock(spiMutex, pdMS_TO_TICKS(1000));
+    if (!lock.acquired())
+    {
+        result = "Mutex timeout";
+        return false;
+    }
+
+    ScopedFile scopedFile(DEFAULT_NETFILE, FileMode::Read, SDCARD_SS, 20000000);
+    if (!scopedFile.isValid())
+    {
+        result = "SD Card mount or file open failed";
+        return false;
+    }
+
+    File &file = scopedFile.get();
+    const bool success = parseWiFiCreds(file, result, creds);
+    return success;
 }
 
 static void ntpCb(void *cb_arg)
@@ -414,12 +482,26 @@ void setup(void)
     }
 
     btStop();
-    if (SET_STATIC_IP && !WiFi.config(STATIC_IP, GATEWAY, SUBNET, PRIMARY_DNS))
-        log_i("Setting static IP failed");
+    WiFiCreds creds;
+    String msg;
 
     WiFi.onEvent(WiFiEvent);
     WiFi.setAutoReconnect(true);
-    WiFi.begin(SSID, PSK);
+
+    if (loadWiFiCreds(msg, creds))
+    {
+        log_i("Using WiFi credentials from sdcard for %s", creds.ssid.c_str());
+        WiFi.begin(creds.ssid.c_str(), creds.psk.c_str());
+    }
+    else
+    {
+        if (SET_STATIC_IP && !WiFi.config(STATIC_IP, GATEWAY, SUBNET, PRIMARY_DNS))
+            log_w("Setting static IP failed");
+            
+        log_i("Using compiled in WiFi credentials for %s", SSID);
+        WiFi.begin(SSID, PSK);
+    }
+
     WiFi.setSleep(false);
 
     if (!ledcSetClockSource(LEDC_USE_APB_CLK))
