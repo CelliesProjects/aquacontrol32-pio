@@ -99,7 +99,7 @@ Browse to this IP, then click on a channel bar and start editing timers.
 
 **You can skip this when flashing your device.**  
 With WiFi secrets on the SD card you dont need to reflash your device if you ever want or need to change the wifi settings at some point.  
-Just create or update `default.net` and reboot.  
+Just create or update `default.net` on the sd card with the new secrets and reboot.  
 There are two methods available.
 
 #### First method - you can not access the 'old' WiFi network
