@@ -1,10 +1,10 @@
 # AQUACONTROL32-PIO
 
-This is a LED control app aimed at aquarium use. With this app you can program gradual sunrises and sunsets on 5 LED channels through a web interface. The moon phase cycle is simulated and can be adjusted from the web interface. All settings are saved to an sd card.
+This is a LED control app aimed at aquarium use. With this app you can program gradual sunrises and sunsets on 5 LED channels through a web interface. The moon phase cycle is simulated and can be adjusted from the web interface. All settings are saved to an SD card.
 
 To use this project you need a esp32 module, a LED dimming board and you will need [VSCode](https://code.visualstudio.com/) with the [PlatformIO](https://platformio.org/) plugin installed.
 
-Supported devices are all esp32 devices with an sd card slot.  
+Supported devices are all esp32 devices with an SD card slot.  
 Predefined configs are included for M5Stack Grey/Fire and the ESP32-S3-BOX-Lite.
 
 ![M5Stack grey LED dimming board with 2A LED channels and sensor connector](https://github.com/user-attachments/assets/30b79d2d-9873-4528-86e6-4fe226557873)  
@@ -99,7 +99,7 @@ Browse to this IP, then click on a channel bar and start editing timers.
 
 **You can skip this when flashing your device.**  
 With WiFi secrets on the SD card you dont need to reflash your device if you ever want or need to change the wifi settings at some point.  
-Just create or update `default.net` on the sd card with the new secrets and reboot.  
+Just create or update `default.net` on the SD card with the new secrets and reboot.  
 There are two methods available.
 
 #### First method - you can not access the 'old' WiFi network
