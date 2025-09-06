@@ -95,7 +95,6 @@ Click on your device to expand the menu and there select `Upload and Monitor`.
 After uploading, the IP address of the webinterface is shown on the display.  
 Browse to this IP, then click on a channel bar and start editing timers.
 
----
 ### Your WiFi has changed? - You can override your WiFi settings with the SD card
 
 **You can skip this when flashing your device.**  
@@ -103,7 +102,7 @@ With WiFi secrets on the SD card you dont need to reflash your device if you eve
 Just create or update `default.net` and reboot.  
 There are two methods available.
 
-**First method - you can not access the 'old' WiFi network**
+#### First method - you can not access the 'old' WiFi network
 
 Create a file named `default.net` with the secrets for the WiFi network: 
 
@@ -116,7 +115,7 @@ PSK=wifi password
 2. Insert the SD card in the aquarium controller.  
 3. Reboot.  
 
-**Second method - you can still access the 'old' network**
+#### Second method - you can still access the 'old' network
 
 1. Upload `default.net` as described above to the controller through the `/fileupload` page.  
 2. Reboot.
