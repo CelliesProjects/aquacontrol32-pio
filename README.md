@@ -1,10 +1,10 @@
 # AQUACONTROL32-PIO
 
-This is a LED control app aimed at aquarium use. With this app you can program gradual sunrises and sunsets on 5 LED channels through a web interface. The moon phase cycle is simulated and can be adjusted from the web interface. All settings are saved to an sd card.
+This is a LED control app aimed at aquarium use. With this app you can program gradual sunrises and sunsets on 5 LED channels through a web interface. The moon phase cycle is simulated and can be adjusted from the web interface. All settings are saved to an SD card.
 
-To use this project you need a esp32 module, a LED dimming board and you will need [VSCode](https://code.visualstudio.com/) with the [PlatformIO](https://platformio.org/) plugin installed.
+To use this project you need a esp32 board with a SD card slot, a LED dimming board and you will need [VSCode](https://code.visualstudio.com/) with the [PlatformIO](https://platformio.org/) plugin installed.
 
-Supported devices are all esp32 devices with an sd card slot.  
+Supported devices are all esp32 devices with an SD card slot.  
 Predefined configs are included for M5Stack Grey/Fire and the ESP32-S3-BOX-Lite.
 
 ![M5Stack grey LED dimming board with 2A LED channels and sensor connector](https://github.com/user-attachments/assets/30b79d2d-9873-4528-86e6-4fe226557873)  
@@ -79,7 +79,7 @@ const char *WEBIF_PASSWORD = "admin";
 
 Adjust the values as needed.
 
-### 4. Make sure you have a FAT32 formatted SD card inserted
+### 4 - Make sure you have a FAT32 formatted SD card inserted
 
 - Timers are saved on the SD card as `default.aqu`.
 - Moonlight setup is saved on the SD card as `default.mnl`.
@@ -87,13 +87,40 @@ Adjust the values as needed.
 Without SD card the app will seem to work but saving timers or moonlight settings is not possible.  
 Uploaded timers will be gone on a reboot without a SD card.
 
-### 5. Upload app and start editing
+### 5 - Upload app and start editing
 
 Select the PIO icon on the left, then open `Project Tasks`.  
 Click on your device to expand the menu and there select `Upload and Monitor`.
 
 After uploading, the IP address of the webinterface is shown on the display.  
 Browse to this IP, then click on a channel bar and start editing timers.
+
+### Your WiFi has changed? - You can override your WiFi settings with the SD card
+
+**You can skip this when flashing your device.**  
+With WiFi secrets on the SD card you dont need to reflash your device if you ever want or need to change the wifi settings at some point.  
+Just create or update `default.net` on the SD card with the new secrets and reboot.  
+There are two methods available.
+
+#### First method - you can not access the 'old' WiFi network
+
+Create a file named `default.net` with the secrets for the WiFi network: 
+
+```bash
+SSID=wifi network
+PSK=wifi password
+```
+
+1. Save this file on the SD card.  
+2. Insert the SD card in the aquarium controller.  
+3. Reboot.  
+
+#### Second method - you can still access the 'old' network
+
+1. Upload `default.net` as described above to the controller through the `/fileupload` page.  
+2. Reboot.
+
+**Note**: Settings found on the SD card override the compiled in settings. 
 
 ## URLs on the device
 

@@ -58,6 +58,8 @@ bool sensorTaskRunning = false;
 static TaskHandle_t sensorTaskHandle = nullptr;
 static SemaphoreHandle_t sensorTaskMutex = xSemaphoreCreateMutex();
 
+constexpr const char *DEFAULT_NETFILE = "/default.net";
+
 static void showIPonDisplay()
 {
     lcdMessage_t msg;
@@ -101,6 +103,71 @@ static void startDimmerTask()
         while (1)
             delay(100);
     }
+}
+
+struct WiFisecrets
+{
+    String ssid;
+    String psk;
+};
+
+bool parseWiFisecrets(File &file, String &result, WiFisecrets &secrets)
+{
+    secrets = {};
+    while (file.available())
+    {
+        String line = file.readStringUntil('\n');
+        line.trim();
+        if (line.isEmpty() || line.startsWith("#")) // skip blanks/comments
+            continue;
+
+        int sep = line.indexOf('=');
+        if (sep == -1)
+        {
+            result = "Invalid line in WiFi secrets file: " + line;
+            return false;
+        }
+
+        String key = line.substring(0, sep);
+        String value = line.substring(sep + 1);
+        key.trim();
+        value.trim();
+
+        if (key.equalsIgnoreCase("SSID"))
+            secrets.ssid = value;
+
+        else if (key.equalsIgnoreCase("PSK"))
+            secrets.psk = value;
+    }
+
+    if (secrets.ssid.isEmpty() || secrets.psk.isEmpty())
+    {
+        result = "Missing SSID or PSK in WiFi secrets file";
+        return false;
+    }
+
+    return true;
+}
+
+bool loadSecretsFromSD(String &result, WiFisecrets &secrets)
+{
+    ScopedMutex lock(spiMutex, pdMS_TO_TICKS(1000));
+    if (!lock.acquired())
+    {
+        result = "Mutex timeout";
+        return false;
+    }
+
+    ScopedFile scopedFile(DEFAULT_NETFILE, FileMode::Read, SDCARD_SS, 20000000);
+    if (!scopedFile.isValid())
+    {
+        result = "SD Card mount or file open failed";
+        return false;
+    }
+
+    File &file = scopedFile.get();
+    const bool success = parseWiFisecrets(file, result, secrets);
+    return success;
 }
 
 static void ntpCb(void *cb_arg)
@@ -414,12 +481,27 @@ void setup(void)
     }
 
     btStop();
-    if (SET_STATIC_IP && !WiFi.config(STATIC_IP, GATEWAY, SUBNET, PRIMARY_DNS))
-        log_i("Setting static IP failed");
 
     WiFi.onEvent(WiFiEvent);
     WiFi.setAutoReconnect(true);
-    WiFi.begin(SSID, PSK);
+
+    WiFisecrets secrets;
+    String error;
+    if (loadSecretsFromSD(error, secrets))
+    {
+        log_i("Using WiFi secrets from sdcard for %s", secrets.ssid.c_str());
+        WiFi.begin(secrets.ssid.c_str(), secrets.psk.c_str());
+    }
+    else
+    {
+        log_i("Reading WiFi secrets from sdcard failed: %s", error.c_str());
+        if (SET_STATIC_IP && !WiFi.config(STATIC_IP, GATEWAY, SUBNET, PRIMARY_DNS))
+            log_w("Setting static IP failed");
+
+        log_i("Using compiled in WiFi secrets for %s", SSID);
+        WiFi.begin(SSID, PSK);
+    }
+
     WiFi.setSleep(false);
 
     if (!ledcSetClockSource(LEDC_USE_APB_CLK))
