@@ -2,7 +2,7 @@
 
 This is a LED control app aimed at aquarium use. With this app you can program gradual sunrises and sunsets on 5 LED channels through a web interface. The moon phase cycle is simulated and can be adjusted from the web interface. All settings are saved to an SD card.
 
-To use this project you need a esp32 module, a LED dimming board and you will need [VSCode](https://code.visualstudio.com/) with the [PlatformIO](https://platformio.org/) plugin installed.
+To use this project you need a esp32 board with a SD card slot, a LED dimming board and you will need [VSCode](https://code.visualstudio.com/) with the [PlatformIO](https://platformio.org/) plugin installed.
 
 Supported devices are all esp32 devices with an SD card slot.  
 Predefined configs are included for M5Stack Grey/Fire and the ESP32-S3-BOX-Lite.
