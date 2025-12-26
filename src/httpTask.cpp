@@ -69,6 +69,7 @@ bool loadMoonSettings(String &result)
     }
 
     std::array<float, NUMBER_OF_CHANNELS> tempMoonLevel;
+
     {
         ScopedFile scopedFile(MOON_SETTINGS_FILE, FileMode::Read, SDCARD_SS, 20000000);
         if (!scopedFile.isValid())
@@ -713,6 +714,10 @@ void httpTask(void *parameter)
     server.config.max_uri_handlers = 15;
     server.config.max_open_sockets = 8;
 
+#if defined(LGFX_ESP32_S3_BOX_LITE)
+    server.config.stack_size = 12288;
+#endif
+
     setupWebsocketHandler(websocketHandler);
     server.on("/websocket", HTTP_GET, &websocketHandler);
 
@@ -723,7 +728,7 @@ void httpTask(void *parameter)
     basicAuth.setPassword(WEBIF_PASSWORD);
     basicAuth.setRealm("aquacontrol");
     basicAuth.setAuthMethod(HTTPAuthMethod::BASIC_AUTH);
-    basicAuth.setAuthFailureMessage("You must be authorized to perform this action.");
+    basicAuth.setAuthFailureMessage("Log in to perform this action.");
 
     server.begin();
 
