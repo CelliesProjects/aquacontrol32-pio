@@ -728,7 +728,7 @@ void httpTask(void *parameter)
     basicAuth.setPassword(WEBIF_PASSWORD);
     basicAuth.setRealm("aquacontrol");
     basicAuth.setAuthMethod(HTTPAuthMethod::BASIC_AUTH);
-    basicAuth.setAuthFailureMessage("Log in to perform this action.");
+    basicAuth.setAuthFailureMessage("\n\nYou have to log in to perform this action.");
 
     server.begin();
 
