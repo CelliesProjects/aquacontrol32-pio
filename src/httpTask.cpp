@@ -366,8 +366,8 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
     );
 
     server.on(
-        "/api/timers", HTTP_POST, [](PsychicRequest *request, PsychicResponse *resp)
-        {
+              "/api/timers", HTTP_POST, [](PsychicRequest *request, PsychicResponse *resp)
+              {
             auto validChannel = validateChannel(request);
             if (!validChannel)
                 return ESP_OK;
@@ -438,7 +438,8 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
 
             return response.send(success ? 200 : 500, TEXT_PLAIN, result.c_str()); }
 
-    )->addMiddleware(&basicAuth);
+              )
+        ->addMiddleware(&basicAuth);
 
     server.on(
         "/api/moonlevels", HTTP_GET, [](PsychicRequest *request, PsychicResponse *resp)
@@ -466,8 +467,8 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
     );
 
     server.on(
-        "/api/moonlevels", HTTP_POST, [](PsychicRequest *request, PsychicResponse *resp)
-        {
+              "/api/moonlevels", HTTP_POST, [](PsychicRequest *request, PsychicResponse *resp)
+              {
                   String body = request->body();
                   float newLevels[NUMBER_OF_CHANNELS];
 
@@ -508,11 +509,12 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
 
                   return response.send(success ? 200 : 500, TEXT_PLAIN, result.c_str()); }
 
-    )->addMiddleware(&basicAuth);
+              )
+        ->addMiddleware(&basicAuth);
 
     server.on(
-        "/api/upload", HTTP_POST, [](PsychicRequest *request, PsychicResponse *resp)
-        {
+              "/api/upload", HTTP_POST, [](PsychicRequest *request, PsychicResponse *resp)
+              {
                   constexpr char *PARAMETER_FILE_NAME = "filename";
 
                   PsychicResponse response(request);
@@ -550,7 +552,8 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
 
                   return response.send(success ? 200 : 500, TEXT_PLAIN, result.c_str()); }
 
-    )->addMiddleware(&basicAuth);
+              )
+        ->addMiddleware(&basicAuth);
 
     server.on(
         "/api/uptime", HTTP_GET, [&timeinfo](PsychicRequest *request, PsychicResponse *resp)
@@ -590,8 +593,8 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
     );
 
     server.on(
-        "/api/scansensor", HTTP_GET, [](PsychicRequest *request, PsychicResponse *resp)
-        {
+              "/api/scansensor", HTTP_GET, [](PsychicRequest *request, PsychicResponse *resp)
+              {
                   PsychicResponse response(request);
 #ifdef HEADLESS_BUILD
                   return response.send(501, TEXT_PLAIN, "Sensor not supported in headless build");
@@ -599,24 +602,27 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
                   const bool success = startSensor();
                   return response.send(success ? 200 : 409, TEXT_PLAIN, success ? "Sensor scan started" : "Sensor already running"); }
 
-    )->addMiddleware(&basicAuth);
+              )
+        ->addMiddleware(&basicAuth);
 
 #if defined(CORE_DEBUG_LEVEL) && (CORE_DEBUG_LEVEL >= 4)
     server.on(
-        "/api/taskstats", HTTP_GET, [](PsychicRequest *request)
+        "/api/taskstats", HTTP_GET, [](PsychicRequest *request, PsychicResponse *resp)
         {
             uint32_t totalRunTime;
             UBaseType_t taskCount = uxTaskGetNumberOfTasks();
 
+            PsychicResponse response(request);
+
             TaskStatus_t *pxTaskStatusArray = (TaskStatus_t *)heap_caps_malloc(taskCount * sizeof(TaskStatus_t), MALLOC_CAP_INTERNAL);
             if (!pxTaskStatusArray) {
-                return request->reply(500, TEXT_PLAIN, "Memory allocation failed");
+                return response.send(500, TEXT_PLAIN, "Memory allocation failed");
             }
 
             UBaseType_t retrievedTasks = uxTaskGetSystemState(pxTaskStatusArray, taskCount, &totalRunTime);
             if (totalRunTime == 0 || retrievedTasks == 0) {
                 heap_caps_free(pxTaskStatusArray);
-                return request->reply(500, TEXT_PLAIN, "Failed to get task stats");
+                return response.send(500, TEXT_PLAIN, "Failed to get task stats");
             }
 
             String csvResponse = "Name,State,Priority,Stack,Runtime,CPU%\n";
@@ -636,20 +642,21 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
 
             heap_caps_free(pxTaskStatusArray);
 
-            return request->reply(200, TEXT_PLAIN, csvResponse.c_str()); }
+            return response.send(200, TEXT_PLAIN, csvResponse.c_str()); }
 
     );
 
     server.on(
-        "/stats", HTTP_GET, [](PsychicRequest *request)
+        "/stats", HTTP_GET, [](PsychicRequest *request, PsychicResponse *resp)
         {
+            PsychicResponse response(request);
+
             if (samePageIsCached(request))
-                return request->reply(304);
+                return response.send(304);
 
             extern const uint8_t stats_start[] asm("_binary_src_webui_stats_html_gz_start");
             extern const uint8_t stats_end[] asm("_binary_src_webui_stats_html_gz_end");   
 
-            PsychicResponse response = PsychicResponse(request);
             addStaticContentHeaders(response);
             response.addHeader(CONTENT_ENCODING, GZIP);
             response.setContentType(TEXT_HTML);
@@ -716,7 +723,7 @@ void httpTask(void *parameter)
     basicAuth.setPassword(WEBIF_PASSWORD);
     basicAuth.setRealm("aquacontrol");
     basicAuth.setAuthMethod(HTTPAuthMethod::BASIC_AUTH);
-    basicAuth.setAuthFailureMessage("You must log in.");
+    basicAuth.setAuthFailureMessage("You must be authorized to perform this action.");
 
     server.begin();
 
