@@ -27,7 +27,7 @@ SOFTWARE.
 #include <esp32-hal.h>
 #include <hal/ledc_types.h>
 #include <vector>
-#include <moonPhase.h>
+#include <MoonPhase.hpp>
 
 #include "ScopedMutex.h"
 #include "lightTimer.h"
