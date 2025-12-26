@@ -201,9 +201,11 @@ static std::optional<uint8_t> validateChannel(PsychicRequest *request)
 {
     constexpr char *CHANNEL = "channel";
 
+    PsychicResponse response(request);
+
     if (!request->hasParam(CHANNEL))
     {
-        request->reply(400, TEXT_PLAIN, "No channel parameter provided");
+        response.send(400, TEXT_PLAIN, "No channel parameter provided");
         return std::nullopt;
     }
 
@@ -211,7 +213,7 @@ static std::optional<uint8_t> validateChannel(PsychicRequest *request)
 
     if (channelStr.length() != 1 || channelStr[0] < '0' || channelStr[0] > '4')
     {
-        request->reply(400, TEXT_PLAIN, "Invalid channel parameter (must be a number 0-4)");
+        response.send(400, TEXT_PLAIN, "Invalid channel parameter (must be a number 0-4)");
         return std::nullopt;
     }
 
@@ -249,15 +251,16 @@ static bool handleFileUpload(const String &data, const String &filePath, String 
 static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
 {
     server.on(
-        "/", HTTP_GET, [](PsychicRequest *request)
+        "/", HTTP_GET, [](PsychicRequest *request, PsychicResponse *resp)
         {
+            PsychicResponse response(request);
+
             if (samePageIsCached(request))
-                return request->reply(304);
+                return response.send(304);
 
             extern const uint8_t index_start[] asm("_binary_src_webui_index_html_gz_start");
             extern const uint8_t index_end[] asm("_binary_src_webui_index_html_gz_end");
 
-            PsychicResponse response = PsychicResponse(request);
             addStaticContentHeaders(response);
             response.addHeader(CONTENT_ENCODING, GZIP);
             response.setContentType(TEXT_HTML);
@@ -268,15 +271,16 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
     );
 
     server.on(
-        "/editor", HTTP_GET, [](PsychicRequest *request)
+        "/editor", HTTP_GET, [](PsychicRequest *request, PsychicResponse *resp)
         {
+            PsychicResponse response(request);
+
             if (samePageIsCached(request))
-                return request->reply(304);
+                return response.send(304);
 
             extern const uint8_t editor_start[] asm("_binary_src_webui_editor_html_gz_start");
             extern const uint8_t editor_end[] asm("_binary_src_webui_editor_html_gz_end");   
 
-            PsychicResponse response = PsychicResponse(request);
             addStaticContentHeaders(response);
             response.addHeader(CONTENT_ENCODING, GZIP);
             response.setContentType(TEXT_HTML);
@@ -287,15 +291,16 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
     );
 
     server.on(
-        "/fileupload", HTTP_GET, [](PsychicRequest *request)
+        "/fileupload", HTTP_GET, [](PsychicRequest *request, PsychicResponse *resp)
         {
+            PsychicResponse response(request);
+
             if (samePageIsCached(request))
-                return request->reply(304);
+                return response.send(304);
 
             extern const uint8_t upload_start[] asm("_binary_src_webui_fileupload_html_gz_start");
             extern const uint8_t upload_end[] asm("_binary_src_webui_fileupload_html_gz_end");   
 
-            PsychicResponse response = PsychicResponse(request);
             addStaticContentHeaders(response);
             response.addHeader(CONTENT_ENCODING, GZIP);
             response.setContentType(TEXT_HTML);
@@ -306,15 +311,16 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
     );
 
     server.on(
-        "/moonsetup", HTTP_GET, [](PsychicRequest *request)
+        "/moonsetup", HTTP_GET, [](PsychicRequest *request, PsychicResponse *resp)
         {
+            PsychicResponse response(request);
+
             if (samePageIsCached(request))
-                return request->reply(304);
+                return response.send(304);
 
             extern const uint8_t moon_start[] asm("_binary_src_webui_moonsetup_html_gz_start");
             extern const uint8_t moon_end[] asm("_binary_src_webui_moonsetup_html_gz_end");
 
-            PsychicResponse response = PsychicResponse(request);
             addStaticContentHeaders(response);
             response.addHeader(CONTENT_ENCODING, GZIP);
             response.setContentType(TEXT_HTML);
@@ -325,7 +331,7 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
     );
 
     server.on(
-        "/api/timers", HTTP_GET, [](PsychicRequest *request)
+        "/api/timers", HTTP_GET, [](PsychicRequest *request, PsychicResponse *resp)
         {
             auto validChannel = validateChannel(request);
             if (!validChannel)
@@ -339,26 +345,29 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
             {
                 ScopedMutex lock(channelMutex, pdMS_TO_TICKS(1000));
                 if (!lock.acquired())
-                    return request->reply(500, TEXT_PLAIN, "Mutex timeout");
+                    {
+                        PsychicResponse response(request);
+                        return response.send(500, TEXT_PLAIN, "Mutex timeout");
+                    }
 
                 for (auto &timer : channel[channelIndex])
                     content += String(timer.time) + "," + String(timer.percentage) + "\n";
             }
+            
 
-            PsychicStreamResponse response(request, TEXT_PLAIN);
+            PsychicResponse response(request);
 
             response.addHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
             response.addHeader("Pragma", "no-cache");
             response.addHeader("Expires", "0");
-
             response.setContent(content.c_str());
             return response.send(); }
 
     );
 
     server.on(
-              "/api/timers", HTTP_POST, [](PsychicRequest *request)
-              {
+        "/api/timers", HTTP_POST, [](PsychicRequest *request, PsychicResponse *resp)
+        {
             auto validChannel = validateChannel(request);
             if (!validChannel)
                 return ESP_OK;
@@ -372,6 +381,8 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
             int endIdx = csvData.indexOf('\n');
 
             log_d("Parsing timers for channel %i", channelIndex);
+
+            PsychicResponse response(request);
 
             while (endIdx != -1)
             {
@@ -390,7 +401,7 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
                     if (time > 86400 || percentage > 100)
                     {
                         log_e("Timer data value overflow");
-                        return request->reply(400, TEXT_PLAIN, "Overflow in timer data");
+                        return response.send(400, TEXT_PLAIN, "Overflow in timer data");
                     }
 
                     newTimers.push_back({time, percentage});
@@ -407,13 +418,13 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
                 newTimers.front().percentage != newTimers.back().percentage)
             {
                 log_e("Staged timerdata failed sanity check");
-                return request->reply(400, TEXT_PLAIN, "Data sanity check failed");
+                return response.send(400, TEXT_PLAIN, "Data sanity check failed");
             }
 
             {
                 ScopedMutex lock(channelMutex, pdMS_TO_TICKS(1000));
                 if (!lock.acquired())
-                    return request->reply(500, TEXT_PLAIN, "Mutex timeout");
+                    return response.send(500, TEXT_PLAIN, "Mutex timeout");
 
                 channel[channelIndex].clear();
                 for (auto &timer : newTimers)
@@ -425,21 +436,22 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
 
             const bool success = saveDefaultTimers(result);
 
-            return request->reply(success ? 200 : 500, TEXT_PLAIN, result.c_str()); }
+            return response.send(success ? 200 : 500, TEXT_PLAIN, result.c_str()); }
 
-              )
-        ->setAuthentication(WEBIF_USER, WEBIF_PASSWORD);
+    )->addMiddleware(&basicAuth);
 
     server.on(
-        "/api/moonlevels", HTTP_GET, [](PsychicRequest *request)
+        "/api/moonlevels", HTTP_GET, [](PsychicRequest *request, PsychicResponse *resp)
         {
             String responseStr;
             responseStr.reserve(NUMBER_OF_CHANNELS * 8);
 
+            PsychicResponse response(request);
+
             {
                 ScopedMutex lock(channelMutex, pdMS_TO_TICKS(1000));
                 if (!lock.acquired())
-                    return request->reply(500, TEXT_PLAIN, "Mutex timeout");
+                    return response.send(500, TEXT_PLAIN, "Mutex timeout");
 
                 for (int i = 0; i < NUMBER_OF_CHANNELS; i++)
                 {
@@ -449,15 +461,17 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
                 }
             }
 
-            return request->reply(200, TEXT_PLAIN, responseStr.c_str()); }
+            return response.send(200, TEXT_PLAIN, responseStr.c_str()); }
 
     );
 
     server.on(
-              "/api/moonlevels", HTTP_POST, [](PsychicRequest *request)
-              {
+        "/api/moonlevels", HTTP_POST, [](PsychicRequest *request, PsychicResponse *resp)
+        {
                   String body = request->body();
                   float newLevels[NUMBER_OF_CHANNELS];
+
+                  PsychicResponse response(request);
 
                   int start = 0, count = 0;
                   while (count < NUMBER_OF_CHANNELS)
@@ -468,7 +482,7 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
 
                       float value = valueStr.toFloat();
                       if (value < 0.0f || value > 1.0f)
-                          return request->reply(400, TEXT_PLAIN, "Invalid values");
+                          return response.send(400, TEXT_PLAIN, "Invalid values");
 
                       newLevels[count++] = value;
                       if (comma == -1)
@@ -476,12 +490,12 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
                   }
 
                   if (count != NUMBER_OF_CHANNELS)
-                      return request->reply(400, TEXT_PLAIN, "Incorrect number of values");
+                      return response.send(400, TEXT_PLAIN, "Incorrect number of values");
 
                   {
                     ScopedMutex lock(channelMutex, pdMS_TO_TICKS(1000));
                     if (!lock.acquired())
-                        return request->reply(500, TEXT_PLAIN, "Mutex timeout");
+                        return response.send(500, TEXT_PLAIN, "Mutex timeout");
 
                       for (int i = 0; i < NUMBER_OF_CHANNELS; i++)
                           fullMoonLevel[i] = newLevels[i];
@@ -492,18 +506,19 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
 
                   const bool success = saveMoonSettings(result);
 
-                  return request->reply(success ? 200 : 500, TEXT_PLAIN, result.c_str()); }
+                  return response.send(success ? 200 : 500, TEXT_PLAIN, result.c_str()); }
 
-              )
-        ->setAuthentication(WEBIF_USER, WEBIF_PASSWORD);
+    )->addMiddleware(&basicAuth);
 
     server.on(
-              "/api/upload", HTTP_POST, [](PsychicRequest *request)
-              {
+        "/api/upload", HTTP_POST, [](PsychicRequest *request, PsychicResponse *resp)
+        {
                   constexpr char *PARAMETER_FILE_NAME = "filename";
 
+                  PsychicResponse response(request);
+
                   if (!request->hasParam(PARAMETER_FILE_NAME) || request->getParam(PARAMETER_FILE_NAME)->value().isEmpty())
-                      return request->reply(400, TEXT_PLAIN, "No filename provided");
+                      return response.send(400, TEXT_PLAIN, "No filename provided");
 
                   String fileName = request->getParam(PARAMETER_FILE_NAME)->value();
                   const String filePath = "/" + fileName;
@@ -511,7 +526,7 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
                   String file = request->body();
 
                   if (file.length() == 0)
-                      return request->reply(400, TEXT_PLAIN, "File is empty");
+                      return response.send(400, TEXT_PLAIN, "File is empty");
 
                   String result;
                   result.reserve(128);
@@ -520,26 +535,25 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
                   {
                       ScopedMutex lock(spiMutex, pdMS_TO_TICKS(1000));
                       if (!lock.acquired())
-                          return request->reply(500, TEXT_PLAIN, "Server busy, try again later");
+                          return response.send(500, TEXT_PLAIN, "Server busy, try again later");
 
                       success = handleFileUpload(file, filePath, result);
                   }
 
                   if (!success)
-                      return request->reply(500, TEXT_PLAIN, result.c_str());
+                      return response.send(500, TEXT_PLAIN, result.c_str());
 
                   if (!strcmp(DEFAULT_TIMERFILE, filePath.c_str()))
                       success = loadDefaultTimers(result);
                   else if (!strcmp(MOON_SETTINGS_FILE, filePath.c_str()))
                       success = loadMoonSettings(result);
 
-                  return request->reply(success ? 200 : 500, TEXT_PLAIN, result.c_str()); }
+                  return response.send(success ? 200 : 500, TEXT_PLAIN, result.c_str()); }
 
-              )
-        ->setAuthentication(WEBIF_USER, WEBIF_PASSWORD);
+    )->addMiddleware(&basicAuth);
 
     server.on(
-        "/api/uptime", HTTP_GET, [&timeinfo](PsychicRequest *request)
+        "/api/uptime", HTTP_GET, [&timeinfo](PsychicRequest *request, PsychicResponse *resp)
         {
             time_t now;
             time(&now);
@@ -569,21 +583,23 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
                 uptimeString += String(minutes) + " minutes and ";
             uptimeString += String(seconds) + " seconds";
 
-            return request->reply(200, TEXT_PLAIN, uptimeString.c_str()); }
+            PsychicResponse response(request);
+
+            return response.send(200, TEXT_PLAIN, uptimeString.c_str()); }
 
     );
 
     server.on(
-              "/api/scansensor", HTTP_GET, [](PsychicRequest *request)
-              {
+        "/api/scansensor", HTTP_GET, [](PsychicRequest *request, PsychicResponse *resp)
+        {
+                  PsychicResponse response(request);
 #ifdef HEADLESS_BUILD
-                  return request->reply(501, TEXT_PLAIN, "Sensor not supported in headless build");
+                  return response.send(501, TEXT_PLAIN, "Sensor not supported in headless build");
 #endif         
                   const bool success = startSensor();
-                  return request->reply(success ? 200 : 409, TEXT_PLAIN, success ? "Sensor scan started" : "Sensor already running"); }
+                  return response.send(success ? 200 : 409, TEXT_PLAIN, success ? "Sensor scan started" : "Sensor already running"); }
 
-              )
-        ->setAuthentication(WEBIF_USER, WEBIF_PASSWORD);
+    )->addMiddleware(&basicAuth);
 
 #if defined(CORE_DEBUG_LEVEL) && (CORE_DEBUG_LEVEL >= 4)
     server.on(
@@ -645,10 +661,11 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
 #endif
 
     server.onNotFound(
-        [](PsychicRequest *request)
+        [](PsychicRequest *request, PsychicResponse *resp)
         {
             log_e("404 - Not found: 'http://%s%s'", request->host().c_str(), request->url().c_str());
-            return request->reply(404, TEXT_HTML, "<h1>404 - Not found</h1>"); }
+            PsychicResponse response(request);
+            return response.send(404, TEXT_HTML, "<h1>404 - Not found</h1>"); }
 
     );
 
@@ -689,13 +706,19 @@ void httpTask(void *parameter)
     server.config.max_uri_handlers = 15;
     server.config.max_open_sockets = 8;
 
-    server.listen(80);
-
     setupWebsocketHandler(websocketHandler);
     server.on("/websocket", HTTP_GET, &websocketHandler);
 
     setupWebserverHandlers(server, timeinfo);
     DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");
+
+    basicAuth.setUsername(WEBIF_USER);
+    basicAuth.setPassword(WEBIF_PASSWORD);
+    basicAuth.setRealm("aquacontrol");
+    basicAuth.setAuthMethod(HTTPAuthMethod::BASIC_AUTH);
+    basicAuth.setAuthFailureMessage("You must log in.");
+
+    server.begin();
 
     log_i("HTTP server started at %s", WiFi.localIP().toString());
 
