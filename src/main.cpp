@@ -422,6 +422,9 @@ void setup(void)
 
     log_i("aquacontrol32-pio");
 
+    SPI.begin(SCK, MISO, MOSI);
+    SPI.setHwCs(true);
+    
     if (!SD.begin(SDCARD_SS))
         log_e("SD init failed");
 
@@ -456,9 +459,6 @@ void setup(void)
         channel[ch].push_back({0, 0});
         channel[ch].push_back({86400, 0});
     }
-
-    SPI.begin(SCK, MISO, MOSI);
-    SPI.setHwCs(true);
 
     {
         String result;
