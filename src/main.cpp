@@ -423,10 +423,7 @@ void setup(void)
     log_i("aquacontrol32-pio");
 
     if (!SD.begin(SDCARD_SS))
-    {
-        Serial.println("SD init failed");
-        return;
-    }
+        log_e("SD init failed");
 
     if (!sensorTaskMutex)
     {

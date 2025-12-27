@@ -195,15 +195,13 @@ static void setupWebsocketHandler(PsychicWebSocketHandler &websocketHandler)
         });
 }
 
-static std::optional<uint8_t> validateChannel(PsychicRequest *request)
+static std::optional<uint8_t> validateChannel(PsychicRequest *request, PsychicResponse *response)
 {
     constexpr char *CHANNEL = "channel";
 
-    PsychicResponse response(request);
-
     if (!request->hasParam(CHANNEL))
     {
-        response.send(400, TEXT_PLAIN, "No channel parameter provided");
+        response->send(400, TEXT_PLAIN, "No channel parameter provided");
         return std::nullopt;
     }
 
@@ -211,7 +209,7 @@ static std::optional<uint8_t> validateChannel(PsychicRequest *request)
 
     if (channelStr.length() != 1 || channelStr[0] < '0' || channelStr[0] > '4')
     {
-        response.send(400, TEXT_PLAIN, "Invalid channel parameter (must be a number 0-4)");
+        response->send(400, TEXT_PLAIN, "Invalid channel parameter (must be a number 0-4)");
         return std::nullopt;
     }
 
@@ -321,7 +319,7 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
     server.on(
         "/api/timers", HTTP_GET, [](PsychicRequest *request, PsychicResponse *response)
         {
-            auto validChannel = validateChannel(request);
+            auto validChannel = validateChannel(request, response);
             if (!validChannel)
                 return ESP_OK;
 
@@ -332,10 +330,8 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
 
             {
                 ScopedMutex lock(channelMutex, pdMS_TO_TICKS(1000));
-                if (!lock.acquired())
-                    {
-                        return response->send(500, TEXT_PLAIN, "Mutex timeout");
-                    }
+                if (!lock.acquired())                    
+                    return response->send(500, TEXT_PLAIN, "Mutex timeout");                    
 
                 for (auto &timer : channel[channelIndex])
                     content += String(timer.time) + "," + String(timer.percentage) + "\n";
@@ -352,7 +348,7 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
     server.on(
               "/api/timers", HTTP_POST, [](PsychicRequest *request, PsychicResponse *response)
               {
-            auto validChannel = validateChannel(request);
+            auto validChannel = validateChannel(request, response);
             if (!validChannel)
                 return ESP_OK;
 
