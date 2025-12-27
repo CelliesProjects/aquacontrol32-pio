@@ -32,6 +32,8 @@ static constexpr char *GZIP = "gzip";
 static constexpr char *IF_MODIFIED_SINCE = "If-Modified-Since";
 static constexpr char *IF_NONE_MATCH = "If-None-Match";
 
+static constexpr char *COULD_NOT_OPEN = "Could not open file";
+
 static char contentCreationTime[30];
 static char etagValue[16];
 
@@ -71,14 +73,12 @@ bool loadMoonSettings(String &result)
     std::array<float, NUMBER_OF_CHANNELS> tempMoonLevel;
 
     {
-        ScopedFile scopedFile(MOON_SETTINGS_FILE, FileMode::Read, SDCARD_SS, 20000000);
-        if (!scopedFile.isValid())
+        File file = SD.open(MOON_SETTINGS_FILE, FILE_READ);
+        if (!file)
         {
-            result = "SD Card mount or file open failed";
+            result = COULD_NOT_OPEN;
             return false;
         }
-
-        File &file = scopedFile.get();
 
         log_i("parsing '%s'", file.path());
 
@@ -139,15 +139,12 @@ bool saveMoonSettings(String &result)
         result = "spiMutex timeout";
         return false;
     }
-
-    ScopedFile scopedFile(MOON_SETTINGS_FILE, FileMode::Write, SDCARD_SS, 20000000);
-    if (!scopedFile.isValid())
+    File file = SD.open(MOON_SETTINGS_FILE, FILE_WRITE);
+    if (!file)
     {
-        result = "SD Card mount or file open failed";
+        result = COULD_NOT_OPEN;
         return false;
     }
-
-    File &file = scopedFile.get();
 
     {
         ScopedMutex lock(channelMutex, pdMS_TO_TICKS(1000));
@@ -228,18 +225,16 @@ time_t time_diff(struct tm *start, struct tm *end)
 
 static bool handleFileUpload(const String &data, const String &filePath, String &result)
 {
-    ScopedFile scopedFile(filePath, FileMode::Write, SDCARD_SS, 20000000);
-    if (!scopedFile.isValid())
+    File file = SD.open(MOON_SETTINGS_FILE, FILE_WRITE);
+    if (!file)
     {
-        result = "SD Card mount or file open failed";
+        result = COULD_NOT_OPEN;
         return false;
     }
 
-    File &destFile = scopedFile.get();
-
     const size_t fileSize = data.length();
 
-    if (destFile.write(reinterpret_cast<const uint8_t *>(data.c_str()), fileSize) != fileSize)
+    if (file.write(reinterpret_cast<const uint8_t *>(data.c_str()), fileSize) != fileSize)
     {
         result = "File write error";
         return false;
@@ -433,8 +428,6 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
             }
 
             String result;
-            result.reserve(128);
-
             const bool success = saveDefaultTimers(result);
 
             return response.send(success ? 200 : 500, TEXT_PLAIN, result.c_str()); }
@@ -504,8 +497,6 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
                   }
 
                   String result;
-                  result.reserve(128);
-
                   const bool success = saveMoonSettings(result);
 
                   return response.send(success ? 200 : 500, TEXT_PLAIN, result.c_str()); }
@@ -532,9 +523,8 @@ static void setupWebserverHandlers(PsychicHttpServer &server, tm *timeinfo)
                       return response.send(400, TEXT_PLAIN, "File is empty");
 
                   String result;
-                  result.reserve(128);
-                  
                   bool success;
+
                   {
                       ScopedMutex lock(spiMutex, pdMS_TO_TICKS(1000));
                       if (!lock.acquired())

@@ -43,7 +43,7 @@ void pushSpriteLocked(LGFX_Sprite &sprite, int32_t y)
     if (lock.acquired())
         sprite.pushSprite(0, y);
     else
-        log_w("Failed to acquire SPI mutex for pushSprite()");
+        log_w("spiMutex timeout");
 }
 
 static void showSystemMessage(char *str)
