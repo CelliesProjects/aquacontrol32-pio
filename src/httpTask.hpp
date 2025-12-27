@@ -33,7 +33,6 @@ SOFTWARE.
 #include <PsychicHttp.h>
 
 #include "ScopedMutex.h"
-#include "ScopedFile.h"
 #include "lightTimer.h"
 #include "websocketMessage.h"
 
@@ -52,7 +51,9 @@ extern bool startSensor();
 
 QueueHandle_t websocketQueue = xQueueCreate(6, sizeof(websocketMessage));
 
-constexpr char *MOON_SETTINGS_FILE = "/default.mnl";
+const char *MOON_SETTINGS_FILE = "/default.mnl";
 const char *DEFAULT_TIMERFILE = "/default.aqu";
+
+AuthenticationMiddleware basicAuth;
 
 #endif

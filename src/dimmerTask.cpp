@@ -67,7 +67,7 @@ void dimmerTask(void *parameter)
                 delay(1000);
         }
 
-    moonPhase moonPhase;
+    MoonPhase moonPhase;
     moonData_t moon = moonPhase.getPhase();
 
     constexpr int MOON_UPDATE_INTERVAL_SEC = 15;
@@ -109,7 +109,7 @@ void dimmerTask(void *parameter)
                                channel[index][currentTimer].percentage)
                         : channel[index][currentTimer].percentage;
 
-                const float currentMoonLevel = fullMoonLevel[index] * moon.percentLit;
+                const float currentMoonLevel = fullMoonLevel[index] * moon.amountLit;
 
                 currentPercentage[index] = newPercentage < currentMoonLevel ? currentMoonLevel : newPercentage;
 

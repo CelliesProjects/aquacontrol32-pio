@@ -32,7 +32,6 @@ SOFTWARE.
 #include <vector>
 
 #include "ScopedMutex.h"
-#include "ScopedFile.h"
 #include "secrets.h"
 #include "lcdMessage.h"
 #include "lightTimer.h"
@@ -158,14 +157,13 @@ bool loadSecretsFromSD(String &result, WiFisecrets &secrets)
         return false;
     }
 
-    ScopedFile scopedFile(DEFAULT_NETFILE, FileMode::Read, SDCARD_SS, 20000000);
-    if (!scopedFile.isValid())
+    File file = SD.open(DEFAULT_NETFILE, FILE_READ);
+    if (!file)
     {
-        result = "SD Card mount or file open failed";
+        result = "Could not open file";
         return false;
     }
 
-    File &file = scopedFile.get();
     const bool success = parseWiFisecrets(file, result, secrets);
     return success;
 }
@@ -319,24 +317,23 @@ bool saveDefaultTimers(String &result)
     ScopedMutex lock(spiMutex, pdMS_TO_TICKS(1000));
     if (!lock.acquired())
     {
-        result = "Mutex timeout";
+        result = "spiMutex timeout";
         log_w("%s", result.c_str());
         return false;
     }
 
-    ScopedFile scopedFile(DEFAULT_TIMERFILE, FileMode::Write, SDCARD_SS, 20000000);
-    if (!scopedFile.isValid())
+    File file = SD.open(DEFAULT_TIMERFILE, FILE_WRITE);
+    if (!file)
     {
-        result = "SD Card mount or file open failed";
+        result = "Could not open file";
         return false;
     }
 
-    File &file = scopedFile.get();
     {
         ScopedMutex lock(channelMutex, pdMS_TO_TICKS(1000));
         if (!lock.acquired())
         {
-            result = "Mutex timeout";
+            result = "channelMutex timeout";
             log_w("%s", result.c_str());
             return false;
         }
@@ -365,14 +362,12 @@ bool loadDefaultTimers(String &result)
         return false;
     }
 
-    ScopedFile scopedFile(DEFAULT_TIMERFILE, FileMode::Read, SDCARD_SS, 20000000);
-    if (!scopedFile.isValid())
+    File file = SD.open(DEFAULT_TIMERFILE, FILE_READ);
+    if (!file)
     {
-        result = "SD Card mount or file open failed";
+        result = "Could not open file";
         return false;
     }
-
-    File &file = scopedFile.get();
     const bool success = parseTimerFile(file, result);
     return success;
 }
@@ -426,6 +421,9 @@ void setup(void)
 #endif
 
     log_i("aquacontrol32-pio");
+
+    if (!SD.begin(SDCARD_SS))
+        log_e("SD init failed");
 
     if (!sensorTaskMutex)
     {
