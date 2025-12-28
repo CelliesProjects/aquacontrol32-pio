@@ -59,6 +59,8 @@ static SemaphoreHandle_t sensorTaskMutex = xSemaphoreCreateMutex();
 
 constexpr const char *DEFAULT_NETFILE = "/default.net";
 
+constexpr const char *SPI_TIMEOUT = "spiMutex timeout";
+
 static void showIPonDisplay()
 {
     lcdMessage_t msg;
@@ -153,7 +155,7 @@ bool loadSecretsFromSD(String &result, WiFisecrets &secrets)
     ScopedMutex lock(spiMutex, pdMS_TO_TICKS(1000));
     if (!lock.acquired())
     {
-        result = "Mutex timeout";
+        result = SPI_TIMEOUT;
         return false;
     }
 
@@ -204,7 +206,7 @@ static bool parseTimerFile(File &file, String &result)
         ScopedMutex lock(channelMutex, pdMS_TO_TICKS(1000));
         if (!lock.acquired())
         {
-            result = "Mutex timeout";
+            result = "channelMutex timeout";
             return false;
         }
 
@@ -317,7 +319,7 @@ bool saveDefaultTimers(String &result)
     ScopedMutex lock(spiMutex, pdMS_TO_TICKS(1000));
     if (!lock.acquired())
     {
-        result = "spiMutex timeout";
+        result = SPI_TIMEOUT;
         log_w("%s", result.c_str());
         return false;
     }
@@ -358,7 +360,7 @@ bool loadDefaultTimers(String &result)
     ScopedMutex lock(spiMutex, pdMS_TO_TICKS(1000));
     if (!lock.acquired())
     {
-        result = "Mutex timeout";
+        result = SPI_TIMEOUT;
         return false;
     }
 
@@ -424,7 +426,7 @@ void setup(void)
 
     SPI.begin(SCK, MISO, MOSI);
     SPI.setHwCs(true);
-    
+
     if (!SD.begin(SDCARD_SS))
         log_e("SD init failed");
 
