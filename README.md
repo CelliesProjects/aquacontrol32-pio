@@ -5,7 +5,8 @@ This is a LED control app aimed at aquarium use. With this app you can program g
 To use this project you need a esp32 board with a SD card slot, a LED dimming board and you will need [VSCode](https://code.visualstudio.com/) with the [PlatformIO](https://platformio.org/) plugin installed.
 
 Supported devices are all esp32 devices with an SD card slot.  
-Predefined configs are included for M5Stack Grey/Fire and the ESP32-S3-BOX-Lite.
+A predefined config are included for esp32 M5Stack Core and Core2 devices.  
+M5Stack CoreS3 devices are not supported.
 
 ![M5Stack grey LED dimming board with 2A LED channels and sensor connector](https://github.com/user-attachments/assets/30b79d2d-9873-4528-86e6-4fe226557873)  
 M5Stack grey LED dimming board with 2A LED channels and sensor connector
@@ -24,8 +25,8 @@ M5Stack grey LED dimming board with 2A LED channels and sensor connector
 ### Hardware needed
 
 - Supported esp32 board. (SD card slot is required)
-- Led dimming board capable of handling 5 LED pwm inputs. (and optionally a i2c temperature sensor)
-- ds18b20 temperature sensor. (optional)
+- Led dimming board capable of handling 5 LED pwm inputs
+- Optional ds18b20 temperature sensor
 
 ### Upgrading from aquacontrol32
 
