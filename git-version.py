@@ -1,31 +1,38 @@
-from typing import Any
 import subprocess
+from typing import Optional
 
-
+# This script is typically called by PlatformIO's SCons build system
 try:
-    Import("env")  # type: ignore[name-defined]
+    Import("env")  # type: ignore
 except NameError:
-    env: Any = None
+    env = None
 
-
-def get_git_version() -> str:
+def get_git_revision() -> str:
+    """
+    Retrieves the current git tag or hash. 
+    Returns 'unknown' if git is not available or not a repository.
+    """
+    cmd = ["git", "describe", "--tags", "--always", "--dirty"]
     try:
         return (
-            subprocess.check_output(
-                ["git", "describe", "--tags", "--always"],
-                stderr=subprocess.DEVNULL,
-                shell=False,  # explicit, safe
-            )
-            .decode()
+            subprocess.check_output(cmd, stderr=subprocess.DEVNULL)
+            .decode("utf-8")
             .strip()
         )
-    except Exception:
-        return "dev"
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return "v-dev"
 
 
-git_version = get_git_version()
+def apply_git_define() -> None:
+    """Injects the version define into the build environment."""
+    version = get_git_revision()
+    
+    # Logic for PlatformIO environment injection
+    if env:
+        # We use a raw string for the value to handle nested quotes correctly
+        env.Append(CPPDEFINES=[("GIT_VERSION", f'\\"{version}\\"')])
+        print(f"Aquacontrol build: {version} ---")
 
-if env is not None:
-    env.Append(
-        CPPDEFINES=[("GIT_VERSION", f'\\"{git_version}\\"')]
-    )
+
+if __name__ == "__main__" or env:
+    apply_git_define()
