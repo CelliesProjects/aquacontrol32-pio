@@ -39,7 +39,7 @@ void messageOnLcd(const char *str)
 
 void pushSpriteLocked(LGFX_Sprite &sprite, int32_t y)
 {
-    ScopedMutex lock(spiMutex, pdMS_TO_TICKS(5));
+    ScopedMutex lock(spiMutex, 0);
     if (lock.acquired())
         sprite.pushSprite(0, y);
     else
