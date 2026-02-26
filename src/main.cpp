@@ -191,14 +191,126 @@ static void ntpCb(void *cb_arg)
 
 static bool parseTimerFile(File &file, String &result)
 {
-    log_i("parsing '%s'", file.path());
-
     constexpr int MAX_TIME = 86400;
     constexpr int MAX_SECONDS_IN_A_DAY = 86399;
     constexpr int MAX_PERCENTAGE = 100;
     constexpr int MIN_PERCENTAGE = 0;
     constexpr int MIN_CHANNEL = 0;
     constexpr int MAX_CHANNEL = NUMBER_OF_CHANNELS - 1;
+
+    using ChannelArray = std::array<std::vector<lightTimer_t>, NUMBER_OF_CHANNELS>;
+    ChannelArray tempChannels;
+
+    log_i("parsing '%s'", file.path());
+
+    int currentLine = 1;
+    String line = file.readStringUntil('\n');
+
+    while (file.available())
+    {
+        if (line.isEmpty())
+        {
+            line = file.readStringUntil('\n');
+            currentLine++;
+            continue;
+        }
+
+        if (line.length() < 3 || line[0] != '[' || !isdigit(line[1]) || line[2] != ']')
+        {
+            result = "invalid section header at line " + String(currentLine);
+            return false;
+        }
+
+        const int currentChannel = atoi(&line[1]);
+        if (currentChannel < MIN_CHANNEL || currentChannel > MAX_CHANNEL)
+        {
+            result = "invalid channel number at line " + String(currentLine);
+            return false;
+        }
+
+        log_v("current channel: %i", currentChannel);
+
+        line = file.readStringUntil('\n');
+        currentLine++;
+
+        while ((line.length() && isdigit(line[0])) || line.isEmpty())
+        {
+            if (line.isEmpty())
+            {
+                line = file.readStringUntil('\n');
+                currentLine++;
+                if (line.isEmpty() && !file.available())
+                    break;
+                continue;
+            }
+
+            if (line.length() < 3)
+            {
+                result = "invalid line " + String(currentLine);
+                return false;
+            }
+
+            const int comma = line.indexOf(',');
+            if (comma < 1)
+            {
+                result = "invalid syntax in line " + String(currentLine) +
+                         " parsing channel " + String(currentChannel);
+                return false;
+            }
+
+            const int time = line.substring(0, comma).toInt();
+            if (time < 0 || time > MAX_SECONDS_IN_A_DAY)
+            {
+                result = "invalid time value in line " + String(currentLine) +
+                         " parsing channel " + String(currentChannel);
+                return false;
+            }
+
+            const int percentage = line.substring(comma + 1).toInt();
+            if (percentage < MIN_PERCENTAGE || percentage > MAX_PERCENTAGE)
+            {
+                result = "invalid percentage value in line " + String(currentLine) +
+                         " parsing channel " + String(currentChannel);
+                return false;
+            }
+
+            auto &vec = tempChannels[currentChannel];
+            auto insertPos =
+                std::lower_bound(vec.begin(), vec.end(),
+                                 lightTimer_t{time, percentage},
+                                 [](const lightTimer_t &a, const lightTimer_t &b)
+                                 { return a.time < b.time; });
+
+            if (insertPos != vec.end() && insertPos->time == time)
+            {
+                result = "duplicate timer entry at line " + String(currentLine) +
+                         " for channel " + String(currentChannel) +
+                         " at time " + String(time);
+                return false;
+            }
+
+            log_v("adding timer for channel %i time: %i, percent: %i",
+                  currentChannel, time, percentage);
+
+            vec.insert(insertPos, {time, percentage});
+
+            line = file.readStringUntil('\n');
+            currentLine++;
+            if (line.isEmpty() && !file.available())
+                break;
+        }
+    }
+
+    for (auto &vec : tempChannels)
+    {
+        if (!vec.empty())
+            vec.push_back({MAX_TIME, vec.front().percentage});
+        else
+        {
+            vec.push_back({0, 0});
+            vec.push_back({MAX_TIME, 0});
+        }
+    }
 
     {
         ScopedMutex lock(channelMutex, pdMS_TO_TICKS(1000));
@@ -208,106 +320,10 @@ static bool parseTimerFile(File &file, String &result)
             return false;
         }
 
-        for (int i = 0; i < NUMBER_OF_CHANNELS;)
-            channel[i++].clear();
-
-        String line = file.readStringUntil('\n');
-        int currentLine = 1;
-
-        while (file.available())
-        {
-            if (line.isEmpty())
-            {
-                line = file.readStringUntil('\n');
-                currentLine++;
-                continue;
-            }
-
-            if (line.length() < 3 || line[0] != '[' || !isdigit(line[1]) || line[2] != ']')
-            {
-                result = "invalid section header at line " + String(currentLine);
-                return false;
-            }
-
-            const int currentChannel = atoi(&line[1]);
-            if (currentChannel > MAX_CHANNEL || currentChannel < MIN_CHANNEL)
-            {
-                result = "invalid channel number at line " + String(currentLine);
-                return false;
-            }
-
-            log_v("current channel: %i", currentChannel);
-
-            line = file.readStringUntil('\n');
-            currentLine++;
-
-            while ((line.length() && isdigit(line[0])) || line.isEmpty())
-            {
-                if (line.isEmpty())
-                {
-                    line = file.readStringUntil('\n');
-                    currentLine++;
-                    if (line.isEmpty() && !file.available())
-                        break;
-                    continue;
-                }
-
-                if (line.length() < 3)
-                {
-                    result = "invalid line " + String(currentLine);
-                    return false;
-                }
-
-                if (line.indexOf(",") < 1)
-                {
-                    result = "invalid syntax in line " + String(currentLine) + " parsing channel " + String(currentChannel);
-                    return false;
-                }
-
-                const int time = line.toInt();
-                if (time > MAX_SECONDS_IN_A_DAY || time < 0)
-                {
-                    result = "invalid time value in line " + String(currentLine) + " parsing channel " + String(currentChannel);
-                    return false;
-                }
-
-                const int percentage = line.substring(line.indexOf(",") + 1).toInt();
-                if (percentage > MAX_PERCENTAGE || percentage < MIN_PERCENTAGE)
-                {
-                    result = "invalid percentage value in line " + String(currentLine) + " parsing channel " + String(currentChannel);
-                    return false;
-                }
-
-                auto insertPos =
-                    std::lower_bound(channel[currentChannel].begin(), channel[currentChannel].end(),
-                                     lightTimer_t{time, percentage}, [](const lightTimer_t &a, const lightTimer_t &b)
-                                     { return a.time < b.time; });
-
-                if (insertPos != channel[currentChannel].end() && insertPos->time == time)
-                {
-                    result = "duplicate timer entry at line " + String(currentLine) + " for channel " + String(currentChannel) + " at time " + String(time);
-                    return false;
-                }
-
-                log_v("adding timer for channel %i time: %i, percent: %i", currentChannel, time, percentage);
-                channel[currentChannel].insert(insertPos, {time, percentage});
-
-                line = file.readStringUntil('\n');
-                currentLine++;
-                if (line.isEmpty() && !file.available())
-                    break;
-            }
-        }
-
-        for (int index = 0; index < NUMBER_OF_CHANNELS; index++)
-            if (channel[index].size())
-                channel[index].push_back({MAX_TIME, channel[index][0].percentage});
-            else
-            {
-                channel[index].push_back({0, 0});
-                channel[index].push_back({MAX_TIME, 0});
-            }
+        for (size_t i = 0; i < NUMBER_OF_CHANNELS; ++i)
+            channel[i].swap(tempChannels[i]);
     }
+
     result = "Timers processed";
     return true;
 }
@@ -424,7 +440,7 @@ void setup(void)
 
     SPI.begin(SCK, MISO, MOSI);
     SPI.setHwCs(true);
-    
+
     if (!SD.begin(SDCARD_SS))
         log_e("SD init failed");
 
