@@ -223,7 +223,7 @@ time_t time_diff(struct tm *start, struct tm *end)
 
 static bool handleFileUpload(const String &data, const String &filePath, String &result)
 {
-    File file = SD.open(MOON_SETTINGS_FILE, FILE_WRITE);
+    File file = SD.open(filePath.c_str(), FILE_WRITE);
     if (!file)
     {
         result = COULD_NOT_OPEN;
